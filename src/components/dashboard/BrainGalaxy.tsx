@@ -7,9 +7,10 @@ import * as THREE from 'three';
 import { Knowledge } from '@/domain/knowledge/knowledge.model';
 import { useTheme } from 'next-themes';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Expand, Mic, MicOff, Search, AlertCircle } from 'lucide-react';
+import { Expand, Mic, MicOff, Search, AlertCircle, GraduationCap } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { VivaVoceModal } from './VivaVoceModal';
 interface BrainGalaxyProps {
     knowledge: Knowledge[];
 }
@@ -248,6 +249,7 @@ function Scene({ knowledge, onNodeClick, matchedIds, matchedPosition, onSearchCo
 
 export function BrainGalaxy({ knowledge }: BrainGalaxyProps) {
     const [selectedNode, setSelectedNode] = useState<Knowledge | null>(null);
+    const [vivaNode, setVivaNode] = useState<Knowledge | null>(null);
     const [isListening, setIsListening] = useState(false);
     const [transcript, setTranscript] = useState("");
     const [showTranscript, setShowTranscript] = useState(false);
@@ -456,9 +458,29 @@ export function BrainGalaxy({ knowledge }: BrainGalaxyProps) {
                                 <Expand className="h-6 w-6" />
                             </button>
                         </div>
+
+                        {/* Actions */}
+                        <div className="flex gap-3 mt-6">
+                            <button
+                                onClick={() => setVivaNode(selectedNode)}
+                                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-xl transition-colors shadow-lg shadow-indigo-600/20"
+                            >
+                                <GraduationCap className="h-4 w-4" />
+                                Start Viva Voce
+                            </button>
+                        </div>
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            {/* Viva Voce Modal */}
+            {vivaNode && (
+                <VivaVoceModal
+                    knowledge={vivaNode}
+                    isOpen={!!vivaNode}
+                    onClose={() => setVivaNode(null)}
+                />
+            )}
 
             {showTranscript && (
                 <div className="absolute bottom-24 left-1/2 -translate-x-1/2 z-30 px-8 py-3 rounded-full bg-black/80 backdrop-blur-xl text-white border border-indigo-500/30 shadow-2xl shadow-indigo-500/20 text-lg font-medium tracking-wide">

@@ -408,6 +408,53 @@ export const AIService = {
       };
     }
   },
+  async startVivaVoce(knowledgeId: string): Promise<AIResponse> {
+    try {
+      const { buildVivaVoceSystemPrompt, buildVivaVoceQuestionPrompt } = await import('./prompts/vivaVoce.prompt');
+      const knowledge = await KnowledgeRepository.getById(knowledgeId);
+
+      if (!knowledge) {
+        return { success: false, content: '', error: 'Knowledge not found' };
+      }
+
+      const config: AIPromptConfig = {
+        systemPrompt: buildVivaVoceSystemPrompt(),
+        userPrompt: buildVivaVoceQuestionPrompt(knowledge),
+      };
+
+      return await generateWithFallback(config);
+    } catch (error) {
+      return {
+        success: false,
+        content: '',
+        error: error instanceof Error ? error.message : 'Failed to start Viva Voce'
+      };
+    }
+  },
+
+  async evaluateVivaVoce(knowledgeId: string, question: string, userAnswer: string): Promise<AIResponse> {
+    try {
+      const { buildVivaVoceSystemPrompt, buildVivaVoceEvaluationPrompt } = await import('./prompts/vivaVoce.prompt');
+      const knowledge = await KnowledgeRepository.getById(knowledgeId);
+
+      if (!knowledge) {
+        return { success: false, content: '', error: 'Knowledge not found' };
+      }
+
+      const config: AIPromptConfig = {
+        systemPrompt: buildVivaVoceSystemPrompt(),
+        userPrompt: buildVivaVoceEvaluationPrompt(knowledge, question, userAnswer),
+      };
+
+      return await generateWithFallback(config);
+    } catch (error) {
+      return {
+        success: false,
+        content: '',
+        error: error instanceof Error ? error.message : 'Failed to evaluate answer'
+      };
+    }
+  },
 };
 
 

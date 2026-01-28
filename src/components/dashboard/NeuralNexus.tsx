@@ -280,10 +280,15 @@ function NodeMesh({ node, onClick, isDimmed }: { node: GraphNode, onClick: (n: G
         </group>
     );
 }
+import { GraduationCap } from 'lucide-react';
+import { VivaVoceModal } from './VivaVoceModal';
+
+// ...
 
 export function NeuralNexus({ knowledge }: NeuralNexusProps) {
     const { nodes, links } = useMemo(() => generateGraphData(knowledge), [knowledge]);
     const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
+    const [vivaNode, setVivaNode] = useState<Knowledge | null>(null);
 
     return (
         <div className="relative h-[600px] w-full overflow-hidden rounded-3xl border border-indigo-500/20 bg-black/90 shadow-2xl">
@@ -332,9 +337,29 @@ export function NeuralNexus({ knowledge }: NeuralNexusProps) {
                             </div>
                             <button onClick={() => setSelectedNode(null)} className="text-zinc-500 hover:text-white">Close</button>
                         </div>
+
+                        {/* Actions */}
+                        <div className="flex gap-3 mt-4">
+                            <button
+                                onClick={() => setVivaNode(selectedNode)}
+                                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-xl transition-colors shadow-lg shadow-indigo-600/20"
+                            >
+                                <GraduationCap className="h-4 w-4" />
+                                Start Viva Voce
+                            </button>
+                        </div>
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            {/* Viva Voce Modal */}
+            {vivaNode && (
+                <VivaVoceModal
+                    knowledge={vivaNode}
+                    isOpen={!!vivaNode}
+                    onClose={() => setVivaNode(null)}
+                />
+            )}
         </div>
     );
 }
