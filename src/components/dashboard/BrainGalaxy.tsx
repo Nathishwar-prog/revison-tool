@@ -267,7 +267,8 @@ export function BrainGalaxy({ knowledge }: BrainGalaxyProps) {
         });
     }, [knowledge]);
 
-    const containerRef = useRef<HTMLDivElement>(null);
+    // Use state instead of ref to ensure re-render when element is available for Canvas
+    const [container, setContainer] = useState<HTMLDivElement | null>(null);
 
     const toggleListening = () => {
         if (isListening) {
@@ -362,7 +363,8 @@ export function BrainGalaxy({ knowledge }: BrainGalaxyProps) {
     }
 
     return (
-        <div ref={containerRef} className="relative h-[500px] w-full overflow-hidden rounded-3xl border border-indigo-500/20 bg-black/80 shadow-2xl group ring-1 ring-white/10">
+        <div ref={setContainer} className="relative h-[500px] w-full overflow-hidden rounded-3xl border border-indigo-500/20 bg-black/80 shadow-2xl group ring-1 ring-white/10">
+            {/* ... */}
             {/* Deep Space Gradient Overlay for 'Real Galaxy' feel */}
             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-indigo-900/20 via-black/0 to-rose-900/10 pointer-events-none" />
 
@@ -397,23 +399,26 @@ export function BrainGalaxy({ knowledge }: BrainGalaxyProps) {
                 </div>
             )}
 
-            <Canvas camera={{ position: [0, 5, 12], fov: 50 }} dpr={[1, 2]} eventSource={containerRef}>
-                <Scene
-                    knowledge={knowledge}
-                    onNodeClick={setSelectedNode}
-                    matchedIds={matchedIds}
-                    matchedPosition={matchedPosition}
-                    onSearchComplete={() => setMatchedPosition(null)}
-                />
-                <OrbitControls
-                    enablePan={false}
-                    autoRotate={!matchedPosition && !selectedNode}
-                    autoRotateSpeed={0.3}
-                    maxDistance={25}
-                    minDistance={4}
-                    makeDefault
-                />
-            </Canvas>
+            {/* Only render Canvas if container is ready */}
+            {container && (
+                <Canvas camera={{ position: [0, 5, 12], fov: 50 }} dpr={[1, 2]} eventSource={container}>
+                    <Scene
+                        knowledge={knowledge}
+                        onNodeClick={setSelectedNode}
+                        matchedIds={matchedIds}
+                        matchedPosition={matchedPosition}
+                        onSearchComplete={() => setMatchedPosition(null)}
+                    />
+                    <OrbitControls
+                        enablePan={false}
+                        autoRotate={!matchedPosition && !selectedNode}
+                        autoRotateSpeed={0.3}
+                        maxDistance={25}
+                        minDistance={4}
+                        makeDefault
+                    />
+                </Canvas>
+            )}
 
             {/* Selected Node Details Overlay - Darker Glass */}
             <AnimatePresence>

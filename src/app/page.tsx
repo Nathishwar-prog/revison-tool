@@ -21,6 +21,9 @@ import { DailyProgressRing } from '@/components/dashboard/DailyProgressRing';
 import { KnowledgeTabs } from '@/components/dashboard/KnowledgeTabs';
 import { BrainGalaxy } from '@/components/dashboard/BrainGalaxy';
 import { KnowledgeGarden } from '@/components/dashboard/KnowledgeGarden';
+import { NeuralNexus } from '@/components/dashboard/NeuralNexus';
+import { TimeCapsule } from '@/components/dashboard/TimeCapsule';
+
 import { KnowledgeTree } from '@/components/dashboard/KnowledgeTree';
 
 import { ApiAdapter } from '@/data/adapters/api.adapter';
@@ -32,7 +35,21 @@ export default function Dashboard() {
   const [dailyProgress, setDailyProgress] = useState({ completed: 0, target: 10 });
   const [streak, setStreak] = useState(0);
   const [statsLoading, setStatsLoading] = useState(true);
-  const [viewMode, setViewMode] = useState<'galaxy' | 'garden'>('garden'); // Default to garden for new feature
+  const [viewMode, setViewMode] = useState<'galaxy' | 'garden' | 'nexus'>('nexus'); // Default to new feature
+
+  const [viewDate, setViewDate] = useState(new Date());
+
+  // Filter knowledge based on Time Capsule date
+  const visibleKnowledge = React.useMemo(() => {
+    return knowledge.filter(k => new Date(k.createdAt) <= viewDate);
+  }, [knowledge, viewDate]);
+
+  // Compute stats based on VISIBLE knowledge to reflect history
+  const historyStats = React.useMemo(() => {
+    const count = visibleKnowledge.length;
+    const weak = visibleKnowledge.filter(k => (k.confidenceLevel ?? 5) <= 2).length;
+    return { count, weak };
+  }, [visibleKnowledge]);
 
   // Quiz State
   const [isQuizOpen, setIsQuizOpen] = useState(false);
@@ -84,9 +101,13 @@ export default function Dashboard() {
   if (loading) return <main className="flex-1 container mx-auto px-4 py-8"><LoadingState /></main>;
   if (error) return <main className="flex-1 container mx-auto px-4 py-8"><div className="p-8 text-center text-red-500">Error: {error}</div></main>;
 
-  const totalCount = knowledge.length;
+  const totalCount = historyStats.count;
+  // Due items: Always show real due items because you need to revise them regardless of time view
   const dueItems = knowledge.filter(k => isDue(k?.revision?.nextRevision));
-  const weakItems = knowledge.filter(k => (k?.confidenceLevel ?? 5) <= 2);
+  // Weak items: Based on visible knowledge (historical view)
+  const weakItems = visibleKnowledge.filter(k => (k?.confidenceLevel ?? 5) <= 2);
+  // We need an array for START CHALLENGE, so keeping visibleKnowledge.filter is correct.
+  // But for the STAT display, we can use historyStats.weak if we want a number, but we kept it as array.
 
   const handleStartChallenge = () => {
     // Pick top 3 weak items or random items if no weak ones
@@ -175,8 +196,11 @@ export default function Dashboard() {
           animate="show"
           className="grid grid-cols-1 lg:grid-cols-3 gap-8"
         >
+
+
           {/* Hero Section - 3D Visualization */}
-          <motion.div variants={item} className="lg:col-span-3 relative">
+          <motion.div variants={item} className="lg:col-span-3 relative group">
+            {/* View Toggles */}
             <div className="absolute left-64 top-6 z-30 flex gap-2 bg-black/20 backdrop-blur-md p-1 rounded-full border border-white/10">
               <button
                 onClick={() => setViewMode('galaxy')}
@@ -190,25 +214,40 @@ export default function Dashboard() {
               >
                 Garden
               </button>
+              <button
+                onClick={() => setViewMode('nexus')}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${viewMode === 'nexus' ? 'bg-violet-500 text-white shadow-lg' : 'text-zinc-400 hover:text-white'}`}
+              >
+                Nexus
+              </button>
             </div>
 
+            {/* Time Capsule Overlay */}
+            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 w-full max-w-2xl px-4 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+              <TimeCapsule
+                startDate={new Date('2026-01-01')}
+                endDate={new Date()}
+                currentDate={viewDate}
+                onChange={setViewDate}
+              />
+            </div>
+
+            {/* 3D View Content */}
             {viewMode === 'galaxy' ? (
-              <BrainGalaxy knowledge={knowledge} />
-            ) : (
+              <BrainGalaxy knowledge={visibleKnowledge} />
+            ) : viewMode === 'garden' ? (
               <KnowledgeGarden
-                knowledge={knowledge}
-                onNodeSelect={(k) => {
-                  // Simple alert or scroll to details for now, or we can add a details modal later
-                  // reusing validation logic for now
-                  console.log("Selected:", k.title);
-                }}
-                metrics={knowledge.map(k => ({
+                knowledge={visibleKnowledge}
+                onNodeSelect={(k) => console.log(k.title)}
+                metrics={visibleKnowledge.map(k => ({
                   knowledgeId: k.id,
                   avgConfidence: k.confidenceLevel,
-                  forgetRate: isDue(k.revision?.nextRevision) ? 0.8 : 0.1, // Wither if due
+                  forgetRate: isDue(k.revision?.nextRevision) ? 0.8 : 0.1,
                   revisionConsistency: 1
                 }))}
               />
+            ) : (
+              <NeuralNexus knowledge={visibleKnowledge} />
             )}
           </motion.div>
 
@@ -314,8 +353,8 @@ export default function Dashboard() {
               <KnowledgeTabs />
             </div>
           </motion.div>
-        </motion.div>
-      </div>
-    </main>
+        </motion.div >
+      </div >
+    </main >
   );
 }
