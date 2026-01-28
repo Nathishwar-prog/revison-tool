@@ -26,6 +26,10 @@ export function AiSettingsModal({ open, onOpenChange }: AiSettingsModalProps) {
   const [hasGemini, setHasGemini] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
 
+  /* New state for server keys */
+  const [serverStatus, setServerStatus] = useState({ hasOpenRouter: false, hasGemini: false });
+  const [isLoading, setIsLoading] = useState(false);
+
   useEffect(() => {
     if (open) {
       const keys = getAIKeys();
@@ -34,6 +38,16 @@ export function AiSettingsModal({ open, onOpenChange }: AiSettingsModalProps) {
       setOpenrouterKey('');
       setGeminiKey('');
       setFeedback(null);
+
+      /* Fetch server status */
+      setIsLoading(true);
+      fetch('/api/ai/status')
+        .then(res => res.json())
+        .then(data => {
+          setServerStatus(data);
+          setIsLoading(false);
+        })
+        .catch(() => setIsLoading(false));
     }
   }, [open]);
 
@@ -41,15 +55,15 @@ export function AiSettingsModal({ open, onOpenChange }: AiSettingsModalProps) {
     const keys = getAIKeys();
     const newOpenrouter = openrouterKey || (hasOpenrouter ? keys.primaryKey : '');
     const newGemini = geminiKey || (hasGemini ? keys.fallbackKey : '');
-    
+
     saveAIKeys(newOpenrouter, newGemini);
-    
+
     setHasOpenrouter(!!newOpenrouter);
     setHasGemini(!!newGemini);
     setOpenrouterKey('');
     setGeminiKey('');
     setFeedback('Keys saved successfully');
-    
+
     setTimeout(() => setFeedback(null), 2000);
   };
 
@@ -60,9 +74,11 @@ export function AiSettingsModal({ open, onOpenChange }: AiSettingsModalProps) {
     setOpenrouterKey('');
     setGeminiKey('');
     setFeedback('Keys cleared');
-    
+
     setTimeout(() => setFeedback(null), 2000);
   };
+
+  const isModelActive = (clientHas: boolean, serverHas: boolean) => clientHas || serverHas;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -79,21 +95,28 @@ export function AiSettingsModal({ open, onOpenChange }: AiSettingsModalProps) {
 
         <div className="space-y-4 py-4">
           <div className="space-y-2">
-            <label className="flex items-center gap-2 text-sm font-medium">
-              <span className="flex h-5 w-5 items-center justify-center rounded bg-emerald-100 text-xs font-bold text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300">1</span>
-              OpenRouter API Key
-              <span className="text-xs text-zinc-500">(Primary)</span>
+            <label className="flex items-center justify-between text-sm font-medium">
+              <span className="flex items-center gap-2">
+                <span className="flex h-5 w-5 items-center justify-center rounded bg-emerald-100 text-xs font-bold text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300">1</span>
+                OpenRouter API Key
+                <span className="text-xs text-zinc-500">(Primary)</span>
+              </span>
+              {serverStatus.hasOpenRouter && !hasOpenrouter && (
+                <span className="text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full dark:bg-indigo-900/50 dark:text-indigo-300 font-semibold uppercase tracking-wide">
+                  Server Active
+                </span>
+              )}
             </label>
             <div className="relative">
               <Input
                 type="password"
-                placeholder={hasOpenrouter ? '••••••••••••••••' : 'sk-or-...'}
+                placeholder={hasOpenrouter ? '••••••••••••••••' : serverStatus.hasOpenRouter ? 'Configured on Server' : 'sk-or-...'}
                 value={openrouterKey}
                 onChange={(e) => setOpenrouterKey(e.target.value)}
                 className="pr-10"
               />
-              {hasOpenrouter && (
-                <Check className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-emerald-500" />
+              {isModelActive(hasOpenrouter, serverStatus.hasOpenRouter) && (
+                <Check className={`absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 ${hasOpenrouter ? 'text-emerald-500' : 'text-indigo-500'}`} />
               )}
             </div>
             <p className="text-xs text-zinc-500">
@@ -102,21 +125,28 @@ export function AiSettingsModal({ open, onOpenChange }: AiSettingsModalProps) {
           </div>
 
           <div className="space-y-2">
-            <label className="flex items-center gap-2 text-sm font-medium">
-              <span className="flex h-5 w-5 items-center justify-center rounded bg-amber-100 text-xs font-bold text-amber-700 dark:bg-amber-900 dark:text-amber-300">2</span>
-              Gemini API Key
-              <span className="text-xs text-zinc-500">(Fallback)</span>
+            <label className="flex items-center justify-between text-sm font-medium">
+              <span className="flex items-center gap-2">
+                <span className="flex h-5 w-5 items-center justify-center rounded bg-amber-100 text-xs font-bold text-amber-700 dark:bg-amber-900 dark:text-amber-300">2</span>
+                Gemini API Key
+                <span className="text-xs text-zinc-500">(Fallback)</span>
+              </span>
+              {serverStatus.hasGemini && !hasGemini && (
+                <span className="text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full dark:bg-indigo-900/50 dark:text-indigo-300 font-semibold uppercase tracking-wide">
+                  Server Active
+                </span>
+              )}
             </label>
             <div className="relative">
               <Input
                 type="password"
-                placeholder={hasGemini ? '••••••••••••••••' : 'AIza...'}
+                placeholder={hasGemini ? '••••••••••••••••' : serverStatus.hasGemini ? 'Configured on Server' : 'AIza...'}
                 value={geminiKey}
                 onChange={(e) => setGeminiKey(e.target.value)}
                 className="pr-10"
               />
-              {hasGemini && (
-                <Check className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-emerald-500" />
+              {isModelActive(hasGemini, serverStatus.hasGemini) && (
+                <Check className={`absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 ${hasGemini ? 'text-emerald-500' : 'text-indigo-500'}`} />
               )}
             </div>
             <p className="text-xs text-zinc-500">
@@ -131,7 +161,7 @@ export function AiSettingsModal({ open, onOpenChange }: AiSettingsModalProps) {
             </div>
           )}
 
-          {!hasAIKeys() && !feedback && (
+          {!isModelActive(hasOpenrouter, serverStatus.hasOpenRouter) && !isModelActive(hasGemini, serverStatus.hasGemini) && !feedback && (
             <div className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
               No API keys configured. AI features will use mock responses.
             </div>

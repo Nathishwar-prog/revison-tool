@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Check, Brain, Trophy, Loader2, Play } from 'lucide-react';
+import { X, Check, Brain, Trophy, Loader2, Play, ArrowRight } from 'lucide-react';
+import { getAIKeys } from '@/ai/storage';
 import confetti from 'canvas-confetti';
 
 interface Question {
@@ -44,10 +45,11 @@ export function QuizModal({ isOpen, onClose, topics }: QuizModalProps) {
     const generateQuiz = async () => {
         setLoading(true);
         try {
+            const keys = getAIKeys();
             const res = await fetch('/api/quiz/generate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ topics })
+                body: JSON.stringify({ topics, keys })
             });
             const data = await res.json();
             if (data.questions) {

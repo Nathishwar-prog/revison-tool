@@ -9,7 +9,7 @@ const MODELS_TO_TRY = [
 ];
 
 const BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
-const TIMEOUT_MS = 30000;
+const TIMEOUT_MS = 60000;
 
 export class GeminiProvider implements AIProvider {
   private apiKey: string;
@@ -54,7 +54,7 @@ export class GeminiProvider implements AIProvider {
               ],
               generationConfig: {
                 temperature: 0.7,
-                maxOutputTokens: 2048,
+                maxOutputTokens: 8192,
               },
             }),
             signal: controller.signal,

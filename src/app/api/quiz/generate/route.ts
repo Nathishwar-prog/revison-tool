@@ -4,13 +4,13 @@ import { AIService } from '@/ai/ai.service';
 
 export async function POST(req: NextRequest) {
     try {
-        const { topics } = await req.json();
+        const { topics, keys } = await req.json();
 
         if (!topics || !Array.isArray(topics) || topics.length === 0) {
             return NextResponse.json({ error: 'Topics array is required' }, { status: 400 });
         }
 
-        const aiResponse = await AIService.generateQuizForTopics(topics);
+        const aiResponse = await AIService.generateQuizForTopics(topics, 5, keys);
 
         if (!aiResponse.success) {
             return NextResponse.json({ error: aiResponse.error }, { status: 500 });

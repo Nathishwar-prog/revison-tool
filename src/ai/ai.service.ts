@@ -10,7 +10,7 @@ import { buildQuizPrompt as buildPersonalizedQuizPrompt, buildQuizSystemPrompt a
 import { buildExplainWeakPrompt, buildExplainWeakSystemPrompt } from './prompts/explainWeak.prompt';
 import { buildDailyPlanPrompt, buildDailyPlanSystemPrompt } from './prompts/dailyPlan.prompt';
 import { buildChatSystemPrompt, buildChatUserPrompt } from './prompts/chat.prompt';
-import { getAIKeys } from './storage';
+import { getAIKeys, AIKeyConfig } from './storage';
 import { OpenRouterProvider } from './providers/openrouter.provider';
 import { GeminiProvider } from './providers/gemini.provider';
 import { ApiAdapter } from '@/data/adapters/api.adapter';
@@ -81,12 +81,35 @@ async function getActiveProvider(): Promise<AIProvider> {
   return mockProvider;
 }
 
-async function generateWithFallback(config: AIPromptConfig): Promise<AIResponse> {
-  if (typeof window === 'undefined') {
-    return mockProvider.generateResponse(config);
+// Helper to merge provided keys with storage/env keys
+async function resolveKeys(providedKeys?: Partial<AIKeyConfig>): Promise<AIKeyConfig> {
+  // 1. Start with provided keys (highest priority)
+  const keys: AIKeyConfig = {
+    primaryProvider: providedKeys?.primaryProvider || '',
+    primaryKey: providedKeys?.primaryKey || '',
+    fallbackProvider: providedKeys?.fallbackProvider || '',
+    fallbackKey: providedKeys?.fallbackKey || '',
+  };
+
+  // 2. If missing, try storage (only works on client)
+  if (typeof window !== 'undefined' && (!keys.primaryKey || !keys.fallbackKey)) {
+    const storageKeys = getAIKeys();
+    if (!keys.primaryKey) {
+      keys.primaryProvider = storageKeys.primaryProvider;
+      keys.primaryKey = storageKeys.primaryKey;
+    }
+    if (!keys.fallbackKey) {
+      keys.fallbackProvider = storageKeys.fallbackProvider;
+      keys.fallbackKey = storageKeys.fallbackKey;
+    }
   }
 
-  const keys = getAIKeys();
+  return keys;
+}
+
+// Updated signature
+async function generateWithFallback(config: AIPromptConfig, providedKeys?: Partial<AIKeyConfig>): Promise<AIResponse> {
+  const keys = await resolveKeys(providedKeys);
 
   if (keys.primaryKey && keys.primaryProvider === 'openrouter') {
     const primaryProvider = new OpenRouterProvider(keys.primaryKey);
@@ -96,13 +119,11 @@ async function generateWithFallback(config: AIPromptConfig): Promise<AIResponse>
       return primaryResult;
     }
 
+    // Fallback logic inside primary block
     if (keys.fallbackKey && keys.fallbackProvider === 'gemini') {
       const fallbackProvider = new GeminiProvider(keys.fallbackKey);
       const fallbackResult = await fallbackProvider.generateResponse(config);
-
-      if (fallbackResult.success) {
-        return fallbackResult;
-      }
+      if (fallbackResult.success) return fallbackResult;
     }
   } else if (keys.fallbackKey && keys.fallbackProvider === 'gemini') {
     const fallbackProvider = new GeminiProvider(keys.fallbackKey);
@@ -113,17 +134,41 @@ async function generateWithFallback(config: AIPromptConfig): Promise<AIResponse>
     }
   }
 
-  // Try Server Proxy (uses .env keys)
-  try {
-    const proxyResult = await ApiAdapter.post('/ai/proxy', config);
+  // Try Server Proxy (uses .env keys) ONLY if we are on client (window defined)
+  // OR if we are on server but haven't tried env vars yet? 
+  // Actually, resolveKeys doesn't check process.env because it's shared code. 
+  // ApiAdapter.post calls the proxy route. The proxy route CHECKS process.env.
 
-    // Check if the result is valid AIResponse
-    if (proxyResult && (proxyResult.success || proxyResult.content)) {
-      return proxyResult as AIResponse;
+  if (typeof window !== 'undefined') {
+    // Client-side: try proxy as last resort
+    try {
+      const proxyResult = await ApiAdapter.post('/ai/proxy', config);
+      if (proxyResult && (proxyResult.success || proxyResult.content)) {
+        return proxyResult as AIResponse;
+      }
+    } catch (e) {
+      // console.warn('AI Proxy attempt failed', e);
     }
-  } catch (e) {
-    // Silent fail to fall back to mock
-    // console.warn('AI Proxy attempt failed', e);
+  } else {
+    // Server-side: We ARE the backend. We should check process.env directly if keys not provided?
+    // Actually, if we are server-side, we should have checked process.env in the specific provider instantiation or here.
+    // But strictly following the plan: The "Proxy" logic above is for client fallback.
+    // If we are server side, we can try to use env vars directly if not provided.
+
+    const envOpenRouter = process.env.OPENROUTER_API_KEY;
+    const envGemini = process.env.GEMINI_API_KEY;
+
+    if (!keys.primaryKey && envOpenRouter) {
+      const p = new OpenRouterProvider(envOpenRouter);
+      const res = await p.generateResponse(config);
+      if (res.success) return res;
+    }
+
+    if (!keys.fallbackKey && envGemini) {
+      const p = new GeminiProvider(envGemini);
+      const res = await p.generateResponse(config);
+      if (res.success) return res;
+    }
   }
 
   return mockProvider.generateResponse(config);
@@ -344,7 +389,8 @@ export const AIService = {
       };
     }
   },
-  async generateQuizForTopics(topics: string[], count: number = 5): Promise<AIResponse> {
+
+  async generateQuizForTopics(topics: string[], count: number = 5, keys?: Partial<AIKeyConfig>): Promise<AIResponse> {
     try {
       const { buildTopicQuizPrompt, buildTopicQuizSystemPrompt } = await import('./prompts/topicQuiz.prompt');
 
@@ -353,7 +399,7 @@ export const AIService = {
         userPrompt: buildTopicQuizPrompt(topics, count),
       };
 
-      return await generateWithFallback(config);
+      return await generateWithFallback(config, keys);
     } catch (error) {
       return {
         success: false,
