@@ -1,0 +1,475 @@
+{
+  "knowledge": [
+    {
+      "id": "k101",
+      "title": "React useEffect Hook",
+      "type": "concept",
+      "domain": "Frontend",
+      "technology": "React",
+      "difficulty": "Intermediate",
+      "content": {
+        "definition": "useEffect lets you perform side effects in function components.",
+        "simpleExplanation": "Runs code after render.",
+        "example": "Fetching data after component mount",
+        "code": "useEffect(() => { fetchData(); }, []);",
+        "commonMistakes": [
+          "Missing dependency array",
+          "Infinite re-renders"
+        ],
+        "myConfusion": ""
+      },
+      "tags": [
+        "react",
+        "hooks"
+      ],
+      "confidenceLevel": 3,
+      "revision": {
+        "lastRevised": "2025-12-27",
+        "revisionCount": 4,
+        "nextRevision": "2025-12-31"
+      },
+      "createdAt": "2025-01-01"
+    },
+    {
+      "id": "k102",
+      "title": "Tailwind Grid Layout",
+      "type": "technique",
+      "domain": "Frontend",
+      "technology": "Tailwind CSS",
+      "difficulty": "Beginner",
+      "content": {
+        "definition": "A CSS grid system built into Tailwind.",
+        "simpleExplanation": "Divide your page into columns and rows easily.",
+        "example": "grid-cols-3 gap-4",
+        "code": "<div className=\"grid grid-cols-3 gap-4\">...</div>",
+        "commonMistakes": [
+          "Not specifying gap",
+          "Confusing grid-cols with col-span"
+        ],
+        "myConfusion": ""
+      },
+      "tags": [
+        "css",
+        "layout"
+      ],
+      "confidenceLevel": 3,
+      "revision": {
+        "lastRevised": "2025-12-27",
+        "revisionCount": 6,
+        "nextRevision": "2025-12-31"
+      },
+      "createdAt": "2025-01-02"
+    },
+    {
+      "id": "k103",
+      "title": "TypeScript Interfaces",
+      "type": "concept",
+      "domain": "Software Engineering",
+      "technology": "TypeScript",
+      "difficulty": "Intermediate",
+      "content": {
+        "definition": "Interfaces define the shape of an object.",
+        "simpleExplanation": "A contract for what an object must contain.",
+        "example": "Defining a User object",
+        "code": "interface User { id: string; name: string; }",
+        "commonMistakes": [
+          "Using interface when type is better",
+          "Missing optional properties"
+        ],
+        "myConfusion": ""
+      },
+      "tags": [
+        "typescript",
+        "typing"
+      ],
+      "confidenceLevel": 2,
+      "revision": {
+        "lastRevised": "2025-01-13",
+        "revisionCount": 2,
+        "nextRevision": "2025-01-15"
+      },
+      "createdAt": "2025-01-03"
+    },
+    {
+      "id": "k104",
+      "title": "SQL Join Types",
+      "type": "concept",
+      "domain": "Backend",
+      "technology": "SQL",
+      "difficulty": "Intermediate",
+      "content": {
+        "definition": "Joins are used to combine rows from two or more tables.",
+        "simpleExplanation": "Linking data between tables.",
+        "example": "LEFT JOIN to get all users and their orders",
+        "code": "SELECT * FROM users LEFT JOIN orders ON users.id = orders.user_id;",
+        "commonMistakes": [
+          "Ambiguous column names",
+          "Joining on wrong keys"
+        ],
+        "myConfusion": ""
+      },
+      "tags": [
+        "database",
+        "sql"
+      ],
+      "confidenceLevel": 4,
+      "revision": {
+        "lastRevised": "2025-01-10",
+        "revisionCount": 4,
+        "nextRevision": "2025-01-17"
+      },
+      "createdAt": "2025-01-04"
+    },
+    {
+      "id": "k105",
+      "title": "React Context API",
+      "type": "concept",
+      "domain": "Frontend",
+      "technology": "React",
+      "difficulty": "Advanced",
+      "content": {
+        "definition": "Context provides a way to pass data through the component tree without prop drilling.",
+        "simpleExplanation": "Global state for your components.",
+        "example": "Theming or User Authentication state",
+        "code": "const AuthContext = createContext();",
+        "commonMistakes": [
+          "Overusing context for everything",
+          "Performance issues with deep trees"
+        ],
+        "myConfusion": ""
+      },
+      "tags": [
+        "react",
+        "state-management"
+      ],
+      "confidenceLevel": 3,
+      "revision": {
+        "lastRevised": "2025-12-27",
+        "revisionCount": 2,
+        "nextRevision": "2025-12-31"
+      },
+      "createdAt": "2025-01-05"
+    },
+    {
+      "id": "k106",
+      "title": "REST API Principles",
+      "type": "concept",
+      "domain": "Backend",
+      "technology": "Web",
+      "difficulty": "Beginner",
+      "content": {
+        "definition": "Representational State Transfer is an architectural style for distributed systems.",
+        "simpleExplanation": "Standard way for computers to talk over the web.",
+        "example": "Using GET to fetch resources",
+        "code": "GET /api/users",
+        "commonMistakes": [
+          "Using POST for fetching data",
+          "Not using proper HTTP status codes"
+        ],
+        "myConfusion": ""
+      },
+      "tags": [
+        "api",
+        "rest"
+      ],
+      "confidenceLevel": 5,
+      "revision": {
+        "lastRevised": "2025-01-08",
+        "revisionCount": 6,
+        "nextRevision": "2025-01-22"
+      },
+      "createdAt": "2025-01-06"
+    },
+    {
+      "id": "k107",
+      "title": "Git Rebase vs Merge",
+      "type": "concept",
+      "domain": "DevOps",
+      "technology": "Git",
+      "difficulty": "Intermediate",
+      "content": {
+        "definition": "Rebase moves or combines a sequence of commits to a new base commit.",
+        "simpleExplanation": "Merge combines changes; rebase rewrites history to be linear.",
+        "example": "Updating feature branch with main",
+        "code": "git rebase main",
+        "commonMistakes": [
+          "Rebasing shared branches",
+          "Losing context of when things happened"
+        ],
+        "myConfusion": ""
+      },
+      "tags": [
+        "git",
+        "version-control"
+      ],
+      "confidenceLevel": 3,
+      "revision": {
+        "lastRevised": "2025-01-11",
+        "revisionCount": 2,
+        "nextRevision": "2025-01-15"
+      },
+      "createdAt": "2025-01-07"
+    },
+    {
+      "id": "k108",
+      "title": "Docker Containers",
+      "type": "concept",
+      "domain": "DevOps",
+      "technology": "Docker",
+      "difficulty": "Intermediate",
+      "content": {
+        "definition": "Docker containers are lightweight, standalone, executable packages of software.",
+        "simpleExplanation": "Pack everything your app needs into a box that runs anywhere.",
+        "example": "Running a Node.js app in a container",
+        "code": "docker run -p 3000:3000 my-node-app",
+        "commonMistakes": [
+          "Large image sizes",
+          "Not using .dockerignore"
+        ],
+        "myConfusion": ""
+      },
+      "tags": [
+        "docker",
+        "devops"
+      ],
+      "confidenceLevel": 2,
+      "revision": {
+        "lastRevised": "2025-01-13",
+        "revisionCount": 1,
+        "nextRevision": "2025-01-14"
+      },
+      "createdAt": "2025-01-08"
+    },
+    {
+      "id": "k109",
+      "title": "Redux Toolkit (RTK)",
+      "type": "technique",
+      "domain": "Frontend",
+      "technology": "Redux",
+      "difficulty": "Advanced",
+      "content": {
+        "definition": "The official, opinionated, batteries-included toolset for efficient Redux development.",
+        "simpleExplanation": "Makes Redux much easier to write and manage.",
+        "example": "Creating a slice",
+        "code": "const counterSlice = createSlice({ ... });",
+        "commonMistakes": [
+          "Mutating state outside of Immer",
+          "Not using Thunks for async logic"
+        ],
+        "myConfusion": ""
+      },
+      "tags": [
+        "react",
+        "redux",
+        "state"
+      ],
+      "confidenceLevel": 1,
+      "revision": {
+        "lastRevised": "2025-01-13",
+        "revisionCount": 1,
+        "nextRevision": "2025-01-14"
+      },
+      "createdAt": "2025-01-09"
+    },
+    {
+      "id": "k110",
+      "title": "Python List Comprehensions",
+      "type": "technique",
+      "domain": "Software Engineering",
+      "technology": "Python",
+      "difficulty": "Beginner",
+      "content": {
+        "definition": "A concise way to create lists.",
+        "simpleExplanation": "One-line for loops to make lists.",
+        "example": "Creating a list of squares",
+        "code": "[x**2 for x in range(10)]",
+        "commonMistakes": [
+          "Making them too complex (unreadable)",
+          "Using them when a simple loop is clearer"
+        ],
+        "myConfusion": ""
+      },
+      "tags": [
+        "python",
+        "syntax"
+      ],
+      "confidenceLevel": 4,
+      "revision": {
+        "lastRevised": "2025-01-10",
+        "revisionCount": 4,
+        "nextRevision": "2025-01-17"
+      },
+      "createdAt": "2025-01-10"
+    },
+    {
+      "title": "shhfe",
+      "type": "concept",
+      "domain": "sss",
+      "technology": "ssss",
+      "difficulty": "Intermediate",
+      "content": {
+        "definition": "sssssssssssssssss",
+        "simpleExplanation": "ssssssssssssssssssss",
+        "example": "ssssssssssssssssss",
+        "code": "ssssssssssssssss",
+        "commonMistakes": [
+          "aaaaaaaaaaaaaaa"
+        ],
+        "myConfusion": "aaaaaaaaaaaaaaaaa"
+      },
+      "tags": [
+        "sss"
+      ],
+      "confidenceLevel": 3,
+      "revision": {
+        "lastRevised": "",
+        "revisionCount": 0,
+        "nextRevision": "2025-12-28"
+      },
+      "id": "k1766907757376",
+      "createdAt": "2025-12-28T07:42:37.376Z"
+    }
+  ],
+  "revisionHistory": [
+    {
+      "id": "r1",
+      "knowledgeId": "k101",
+      "confidenceGiven": 2,
+      "revisedAt": "2025-01-02",
+      "timeTakenSeconds": 120
+    },
+    {
+      "id": "r2",
+      "knowledgeId": "k101",
+      "confidenceGiven": 3,
+      "revisedAt": "2025-01-05",
+      "timeTakenSeconds": 90
+    },
+    {
+      "id": "r3",
+      "knowledgeId": "k101",
+      "confidenceGiven": 2,
+      "revisedAt": "2025-01-08",
+      "timeTakenSeconds": 110
+    },
+    {
+      "id": "r4",
+      "knowledgeId": "k101",
+      "confidenceGiven": 3,
+      "revisedAt": "2025-01-12",
+      "timeTakenSeconds": 85
+    },
+    {
+      "id": "r5",
+      "knowledgeId": "k102",
+      "confidenceGiven": 3,
+      "revisedAt": "2025-01-03",
+      "timeTakenSeconds": 60
+    },
+    {
+      "id": "r6",
+      "knowledgeId": "k102",
+      "confidenceGiven": 4,
+      "revisedAt": "2025-01-06",
+      "timeTakenSeconds": 45
+    },
+    {
+      "id": "r7",
+      "knowledgeId": "k102",
+      "confidenceGiven": 5,
+      "revisedAt": "2025-01-10",
+      "timeTakenSeconds": 30
+    },
+    {
+      "id": "r8",
+      "knowledgeId": "k103",
+      "confidenceGiven": 2,
+      "revisedAt": "2025-01-05",
+      "timeTakenSeconds": 150
+    },
+    {
+      "id": "r9",
+      "knowledgeId": "k103",
+      "confidenceGiven": 1,
+      "revisedAt": "2025-01-09",
+      "timeTakenSeconds": 180
+    },
+    {
+      "id": "r10",
+      "knowledgeId": "k104",
+      "confidenceGiven": 3,
+      "revisedAt": "2025-01-04",
+      "timeTakenSeconds": 100
+    },
+    {
+      "id": "r11",
+      "knowledgeId": "k104",
+      "confidenceGiven": 4,
+      "revisedAt": "2025-01-08",
+      "timeTakenSeconds": 75
+    },
+    {
+      "id": "r12",
+      "knowledgeId": "k105",
+      "confidenceGiven": 1,
+      "revisedAt": "2025-01-07",
+      "timeTakenSeconds": 200
+    },
+    {
+      "id": "r13",
+      "knowledgeId": "k106",
+      "confidenceGiven": 4,
+      "revisedAt": "2025-01-03",
+      "timeTakenSeconds": 50
+    },
+    {
+      "id": "r14",
+      "knowledgeId": "k106",
+      "confidenceGiven": 5,
+      "revisedAt": "2025-01-07",
+      "timeTakenSeconds": 35
+    },
+    {
+      "id": "r15",
+      "knowledgeId": "k107",
+      "confidenceGiven": 2,
+      "revisedAt": "2025-01-06",
+      "timeTakenSeconds": 130
+    },
+    {
+      "id": "r16",
+      "knowledgeId": "k107",
+      "confidenceGiven": 3,
+      "revisedAt": "2025-01-11",
+      "timeTakenSeconds": 95
+    },
+    {
+      "id": "r17",
+      "knowledgeId": "k108",
+      "confidenceGiven": 1,
+      "revisedAt": "2025-01-10",
+      "timeTakenSeconds": 170
+    },
+    {
+      "id": "r18",
+      "knowledgeId": "k109",
+      "confidenceGiven": 1,
+      "revisedAt": "2025-01-11",
+      "timeTakenSeconds": 190
+    },
+    {
+      "id": "r19",
+      "knowledgeId": "k110",
+      "confidenceGiven": 3,
+      "revisedAt": "2025-01-05",
+      "timeTakenSeconds": 55
+    },
+    {
+      "id": "r20",
+      "knowledgeId": "k110",
+      "confidenceGiven": 4,
+      "revisedAt": "2025-01-09",
+      "timeTakenSeconds": 40
+    }
+  ]
+}
