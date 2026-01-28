@@ -20,6 +20,7 @@ import { LearningHeatmap } from '@/components/dashboard/LearningHeatmap';
 import { DailyProgressRing } from '@/components/dashboard/DailyProgressRing';
 import { KnowledgeTabs } from '@/components/dashboard/KnowledgeTabs';
 import { BrainGalaxy } from '@/components/dashboard/BrainGalaxy';
+import { KnowledgeGarden } from '@/components/dashboard/KnowledgeGarden';
 import { KnowledgeTree } from '@/components/dashboard/KnowledgeTree';
 
 import { ApiAdapter } from '@/data/adapters/api.adapter';
@@ -31,6 +32,7 @@ export default function Dashboard() {
   const [dailyProgress, setDailyProgress] = useState({ completed: 0, target: 10 });
   const [streak, setStreak] = useState(0);
   const [statsLoading, setStatsLoading] = useState(true);
+  const [viewMode, setViewMode] = useState<'galaxy' | 'garden'>('garden'); // Default to garden for new feature
 
   // Quiz State
   const [isQuizOpen, setIsQuizOpen] = useState(false);
@@ -173,9 +175,41 @@ export default function Dashboard() {
           animate="show"
           className="grid grid-cols-1 lg:grid-cols-3 gap-8"
         >
-          {/* Hero Section - 3D Brain Galaxy (Always Dark) */}
-          <motion.div variants={item} className="lg:col-span-3">
-            <BrainGalaxy knowledge={knowledge} />
+          {/* Hero Section - 3D Visualization */}
+          <motion.div variants={item} className="lg:col-span-3 relative">
+            <div className="absolute left-64 top-6 z-30 flex gap-2 bg-black/20 backdrop-blur-md p-1 rounded-full border border-white/10">
+              <button
+                onClick={() => setViewMode('galaxy')}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${viewMode === 'galaxy' ? 'bg-indigo-500 text-white shadow-lg' : 'text-zinc-400 hover:text-white'}`}
+              >
+                Galaxy
+              </button>
+              <button
+                onClick={() => setViewMode('garden')}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${viewMode === 'garden' ? 'bg-emerald-500 text-white shadow-lg' : 'text-zinc-400 hover:text-white'}`}
+              >
+                Garden
+              </button>
+            </div>
+
+            {viewMode === 'galaxy' ? (
+              <BrainGalaxy knowledge={knowledge} />
+            ) : (
+              <KnowledgeGarden
+                knowledge={knowledge}
+                onNodeSelect={(k) => {
+                  // Simple alert or scroll to details for now, or we can add a details modal later
+                  // reusing validation logic for now
+                  console.log("Selected:", k.title);
+                }}
+                metrics={knowledge.map(k => ({
+                  knowledgeId: k.id,
+                  avgConfidence: k.confidenceLevel,
+                  forgetRate: isDue(k.revision?.nextRevision) ? 0.8 : 0.1, // Wither if due
+                  revisionConsistency: 1
+                }))}
+              />
+            )}
           </motion.div>
 
           {/* Left Column: Progress and Stats */}

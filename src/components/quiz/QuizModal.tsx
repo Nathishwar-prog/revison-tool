@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Check, Brain, Trophy, Loader2, Play, ArrowRight } from 'lucide-react';
 import { getAIKeys } from '@/ai/storage';
+// @ts-ignore
 import confetti from 'canvas-confetti';
 
 interface Question {

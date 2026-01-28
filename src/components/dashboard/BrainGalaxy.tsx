@@ -277,7 +277,57 @@ export function BrainGalaxy({ knowledge }: BrainGalaxyProps) {
         }
     };
 
-    // ... (rest of methods)
+    const recognitionRef = useRef<any>(null);
+
+    const startListening = () => {
+        if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+            toast.error("Voice search not supported in this browser.");
+            return;
+        }
+
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const recognition = new SpeechRecognition();
+
+        recognition.continuous = false;
+        recognition.interimResults = false;
+        recognition.lang = 'en-US';
+
+        recognition.onstart = () => {
+            setIsListening(true);
+            setErrorMsg("");
+        };
+
+        recognition.onresult = (event: any) => {
+            const transcript = event.results[0][0].transcript;
+            setTranscript(transcript);
+            setShowTranscript(true);
+            handleVoiceCommand(transcript);
+
+            // Hide transcript after delay
+            setTimeout(() => setShowTranscript(false), 3000);
+        };
+
+        recognition.onerror = (event: any) => {
+            console.error("Speech recognition error", event.error);
+            setErrorMsg("Could not hear you. Try again.");
+            setIsListening(false);
+        };
+
+        recognition.onend = () => {
+            setIsListening(false);
+        };
+
+        recognitionRef.current = recognition;
+        recognition.start();
+    };
+
+    const stopListening = () => {
+        if (recognitionRef.current) {
+            recognitionRef.current.stop();
+            recognitionRef.current = null;
+        }
+        setIsListening(false);
+    };
 
     const handleVoiceCommand = (text: string) => {
         const cleanText = text.toLowerCase()
