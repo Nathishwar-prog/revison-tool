@@ -4,6 +4,7 @@ import { AuthProvider } from "@/context/AuthContext";
 import { Navbar } from "@/components/Navbar";
 import { MobileBottomNav } from "@/components/MobileBottomNav";
 import { WelcomeTour } from "@/components/WelcomeTour";
+import { Toaster } from "@/components/ui/sonner";
 
 export const metadata: Metadata = {
   title: "KnowGrow",
@@ -29,6 +30,7 @@ export default function RootLayout({
           <main className="flex-1 pb-20 md:pb-0">{children}</main>
           <MobileBottomNav />
           <WelcomeTour />
+          <Toaster />
         </AuthProvider>
       </body>
     </html>

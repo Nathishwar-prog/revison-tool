@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { saveAIKeys, clearAIKeys, getAIKeys, hasAIKeys } from '@/ai/storage';
 import { Check, Trash2, KeyRound, Zap } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface AiSettingsModalProps {
   open: boolean;
@@ -63,6 +64,7 @@ export function AiSettingsModal({ open, onOpenChange }: AiSettingsModalProps) {
     setOpenrouterKey('');
     setGeminiKey('');
     setFeedback('Keys saved successfully');
+    toast.success('AI API keys saved successfully!');
 
     setTimeout(() => setFeedback(null), 2000);
   };
@@ -74,6 +76,7 @@ export function AiSettingsModal({ open, onOpenChange }: AiSettingsModalProps) {
     setOpenrouterKey('');
     setGeminiKey('');
     setFeedback('Keys cleared');
+    toast.info('AI API keys cleared.');
 
     setTimeout(() => setFeedback(null), 2000);
   };

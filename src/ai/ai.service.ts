@@ -29,10 +29,12 @@ export interface AIResponse {
 }
 
 export interface AIProvider {
+  name: string;
   generateResponse(config: AIPromptConfig): Promise<AIResponse>;
 }
 
 class MockAIProvider implements AIProvider {
+  name = 'MockAI';
   async generateResponse(config: AIPromptConfig): Promise<AIResponse> {
     await new Promise(resolve => setTimeout(resolve, 500));
 
@@ -108,40 +110,55 @@ async function resolveKeys(providedKeys?: Partial<AIKeyConfig>): Promise<AIKeyCo
 }
 
 // Updated signature
+// Helper to instantiate provider by name
+function createProvider(name: string, key: string): AIProvider | null {
+  if (!key) return null;
+  if (name === 'openrouter' || name === 'openai') return new OpenRouterProvider(key);
+  if (name === 'gemini') return new GeminiProvider(key);
+  return null;
+}
+
 async function generateWithFallback(config: AIPromptConfig, providedKeys?: Partial<AIKeyConfig>): Promise<AIResponse> {
   const keys = await resolveKeys(providedKeys);
+  const providers: AIProvider[] = [];
 
-  if (keys.primaryKey && keys.primaryProvider === 'openrouter') {
-    const primaryProvider = new OpenRouterProvider(keys.primaryKey);
-    const primaryResult = await primaryProvider.generateResponse(config);
+  // 1. Add Primary Provider
+  const primary = createProvider(keys.primaryProvider, keys.primaryKey);
+  if (primary) providers.push(primary);
 
-    if (primaryResult.success) {
-      return primaryResult;
-    }
+  // 2. Add Fallback Provider
+  const fallback = createProvider(keys.fallbackProvider, keys.fallbackKey);
+  if (fallback) providers.push(fallback);
 
-    // Fallback logic inside primary block
-    if (keys.fallbackKey && keys.fallbackProvider === 'gemini') {
-      const fallbackProvider = new GeminiProvider(keys.fallbackKey);
-      const fallbackResult = await fallbackProvider.generateResponse(config);
-      if (fallbackResult.success) return fallbackResult;
-    }
-  } else if (keys.fallbackKey && keys.fallbackProvider === 'gemini') {
-    const fallbackProvider = new GeminiProvider(keys.fallbackKey);
-    const fallbackResult = await fallbackProvider.generateResponse(config);
+  // 3. Add Server Fallback (Environment Variables)
+  // Only if client-side keys are missing, we might check env vars here or via proxy below.
+  // Ideally, valid providers from storage are prioritized.
 
-    if (fallbackResult.success) {
-      return fallbackResult;
+  // Execute with Retry
+  let lastError: string = 'No AI provider configured';
+
+  console.log(`[AIService] Strategy: ${providers.map(p => p.name).join(' -> ')}`);
+
+  for (const provider of providers) {
+    try {
+      console.log(`[AIService] Attempting provider: ${provider.name}`);
+      const response = await provider.generateResponse(config);
+      if (response.success) {
+        console.log(`[AIService] Success with provider: ${provider.name}`);
+        return response;
+      }
+      lastError = response.error || 'Provider failed';
+      console.warn(`[AIService] Provider ${provider.name} failed, trying next... Error: ${lastError}`);
+    } catch (e) {
+      lastError = e instanceof Error ? e.message : 'Unknown error';
+      console.warn(`[AIService] Provider ${provider.name} exception, trying next... Error: ${lastError}`);
     }
   }
 
-  // Try Server Proxy (uses .env keys) ONLY if we are on client (window defined)
-  // OR if we are on server but haven't tried env vars yet? 
-  // Actually, resolveKeys doesn't check process.env because it's shared code. 
-  // ApiAdapter.post calls the proxy route. The proxy route CHECKS process.env.
-
+  // 4. Final Resort: Server Proxy (if on client)
   if (typeof window !== 'undefined') {
-    // Client-side: try proxy as last resort
     try {
+      // If client keys failed (or didn't exist), try the proxy which uses server .env
       const proxyResult = await ApiAdapter.post('/ai/proxy', config);
       if (proxyResult && (proxyResult.success || proxyResult.content)) {
         return proxyResult as AIResponse;
@@ -150,28 +167,30 @@ async function generateWithFallback(config: AIPromptConfig, providedKeys?: Parti
       // console.warn('AI Proxy attempt failed', e);
     }
   } else {
-    // Server-side: We ARE the backend. We should check process.env directly if keys not provided?
-    // Actually, if we are server-side, we should have checked process.env in the specific provider instantiation or here.
-    // But strictly following the plan: The "Proxy" logic above is for client fallback.
-    // If we are server side, we can try to use env vars directly if not provided.
-
+    // Server-side fallback to env vars if not already covered? 
+    // (Assuming storage keys handle main flow, but env vars are backup)
     const envOpenRouter = process.env.OPENROUTER_API_KEY;
     const envGemini = process.env.GEMINI_API_KEY;
 
-    if (!keys.primaryKey && envOpenRouter) {
-      const p = new OpenRouterProvider(envOpenRouter);
-      const res = await p.generateResponse(config);
-      if (res.success) return res;
-    }
-
-    if (!keys.fallbackKey && envGemini) {
-      const p = new GeminiProvider(envGemini);
-      const res = await p.generateResponse(config);
-      if (res.success) return res;
+    if (!keys.primaryKey && !keys.fallbackKey) {
+      if (envOpenRouter) {
+        const p = new OpenRouterProvider(envOpenRouter);
+        const res = await p.generateResponse(config);
+        if (res.success) return res;
+      }
+      if (envGemini) {
+        const p = new GeminiProvider(envGemini);
+        const res = await p.generateResponse(config);
+        if (res.success) return res;
+      }
     }
   }
 
-  return mockProvider.generateResponse(config);
+  return {
+    success: false,
+    content: '',
+    error: `All AI providers failed. Last error: ${lastError}`
+  };
 }
 
 export function setAIProvider(provider: AIProvider): void {
