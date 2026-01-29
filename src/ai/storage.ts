@@ -30,23 +30,43 @@ export function getAIKeys(): AIKeyConfig {
   };
 }
 
-export function saveAIKeys(openrouterKey: string, geminiKey: string): void {
+export function saveAIKeys(openrouterKey: string, geminiKey: string, preferredProvider: 'openrouter' | 'gemini' = 'openrouter'): void {
   if (typeof window === 'undefined') return;
 
-  if (openrouterKey) {
-    localStorage.setItem(AI_STORAGE_KEYS.PRIMARY_PROVIDER, 'openrouter');
-    localStorage.setItem(AI_STORAGE_KEYS.PRIMARY_KEY, openrouterKey);
-  } else {
-    localStorage.removeItem(AI_STORAGE_KEYS.PRIMARY_PROVIDER);
-    localStorage.removeItem(AI_STORAGE_KEYS.PRIMARY_KEY);
-  }
+  if (preferredProvider === 'gemini') {
+    // Gemini is Primary
+    if (geminiKey) {
+      localStorage.setItem(AI_STORAGE_KEYS.PRIMARY_PROVIDER, 'gemini');
+      localStorage.setItem(AI_STORAGE_KEYS.PRIMARY_KEY, geminiKey);
+    } else {
+      localStorage.removeItem(AI_STORAGE_KEYS.PRIMARY_PROVIDER);
+      localStorage.removeItem(AI_STORAGE_KEYS.PRIMARY_KEY);
+    }
 
-  if (geminiKey) {
-    localStorage.setItem(AI_STORAGE_KEYS.FALLBACK_PROVIDER, 'gemini');
-    localStorage.setItem(AI_STORAGE_KEYS.FALLBACK_KEY, geminiKey);
+    if (openrouterKey) {
+      localStorage.setItem(AI_STORAGE_KEYS.FALLBACK_PROVIDER, 'openrouter');
+      localStorage.setItem(AI_STORAGE_KEYS.FALLBACK_KEY, openrouterKey);
+    } else {
+      localStorage.removeItem(AI_STORAGE_KEYS.FALLBACK_PROVIDER);
+      localStorage.removeItem(AI_STORAGE_KEYS.FALLBACK_KEY);
+    }
   } else {
-    localStorage.removeItem(AI_STORAGE_KEYS.FALLBACK_PROVIDER);
-    localStorage.removeItem(AI_STORAGE_KEYS.FALLBACK_KEY);
+    // OpenRouter is Primary (Default)
+    if (openrouterKey) {
+      localStorage.setItem(AI_STORAGE_KEYS.PRIMARY_PROVIDER, 'openrouter');
+      localStorage.setItem(AI_STORAGE_KEYS.PRIMARY_KEY, openrouterKey);
+    } else {
+      localStorage.removeItem(AI_STORAGE_KEYS.PRIMARY_PROVIDER);
+      localStorage.removeItem(AI_STORAGE_KEYS.PRIMARY_KEY);
+    }
+
+    if (geminiKey) {
+      localStorage.setItem(AI_STORAGE_KEYS.FALLBACK_PROVIDER, 'gemini');
+      localStorage.setItem(AI_STORAGE_KEYS.FALLBACK_KEY, geminiKey);
+    } else {
+      localStorage.removeItem(AI_STORAGE_KEYS.FALLBACK_PROVIDER);
+      localStorage.removeItem(AI_STORAGE_KEYS.FALLBACK_KEY);
+    }
   }
 }
 

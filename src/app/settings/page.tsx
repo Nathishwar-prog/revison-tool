@@ -15,6 +15,7 @@ import {
     AlertCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { getAIKeys, saveAIKeys } from '@/ai/storage';
 
 export default function SettingsPage() {
     const { user, login } = useAuth(); // login used to update local user state if needed
@@ -30,8 +31,8 @@ export default function SettingsPage() {
     const [aiSettings, setAiSettings] = useState({
         primary_provider: 'gemini',
         encrypted_keys: {
-            openai: '',
-            gemini: ''
+            openai: '', // We map this to OpenRouter/Primary
+            gemini: ''  // We map this to Gemini/Fallback
         }
     });
 
@@ -45,14 +46,36 @@ export default function SettingsPage() {
                     setDailyTarget(userData.user.dailyRevisionTarget || 10);
                 }
 
-                // Fetch AI settings
-                const aiData = await ApiAdapter.get('/ai/settings');
-                if (aiData) {
-                    setAiSettings({
-                        primary_provider: aiData.primaryProvider || 'gemini',
-                        encrypted_keys: aiData.encryptedKeys || { openai: '', gemini: '' }
-                    });
+                // Load AI Keys from LocalStorage (Source of Truth)
+                // Load AI Keys from LocalStorage (Source of Truth)
+                const localKeys = getAIKeys();
+
+                // Determine which UI provider passed on storage value
+                // Storage uses 'openrouter' / 'gemini'
+                // UI uses 'openai' / 'gemini'
+                let uiPrimaryProvider = 'gemini';
+                if (localKeys.primaryProvider === 'openrouter') {
+                    uiPrimaryProvider = 'openai';
+                } else if (localKeys.primaryProvider === 'gemini') {
+                    uiPrimaryProvider = 'gemini';
+                } else {
+                    // Default if nothing stored, or check fallback
+                    // If stored primary is empty, maybe check if we have a key in a slot?
+                    if (localKeys.primaryKey) {
+                        // If we have a key but no provider name (shouldn't happen with new logic), determine by slot?
+                        // Our storage logic writes provider name, so we should trust it.
+                        // But if user is fresh, default to Gemini.
+                    }
                 }
+
+                setAiSettings({
+                    primary_provider: uiPrimaryProvider,
+                    encrypted_keys: {
+                        openai: (localKeys.primaryProvider === 'openrouter' ? localKeys.primaryKey : localKeys.fallbackKey) || '',
+                        gemini: (localKeys.primaryProvider === 'gemini' ? localKeys.primaryKey : localKeys.fallbackKey) || ''
+                    }
+                });
+
             } catch (error) {
                 console.error("Failed to load settings", error);
                 toast.error("Failed to load settings");
@@ -73,8 +96,7 @@ export default function SettingsPage() {
                 dailyRevisionTarget: dailyTarget
             });
             toast.success("Profile updated successfully");
-            // Optionally refresh global user context here if needed
-            window.location.reload(); // Simple way to refresh context
+            window.location.reload();
         } catch (error) {
             toast.error("Failed to update profile");
         } finally {
@@ -86,11 +108,20 @@ export default function SettingsPage() {
         e.preventDefault();
         setSaving(true);
         try {
-            await ApiAdapter.put('/ai/settings', {
-                primaryProvider: aiSettings.primary_provider,
-                encryptedKeys: aiSettings.encrypted_keys
-            });
-            toast.success("AI Settings updated successfully");
+            // Save to LocalStorage (Immediate Usage)
+            // Map 'openai' UI choice to 'openrouter' storage key
+            const preferred = aiSettings.primary_provider === 'gemini' ? 'gemini' : 'openrouter';
+
+            saveAIKeys(
+                aiSettings.encrypted_keys.openai,
+                aiSettings.encrypted_keys.gemini,
+                preferred
+            );
+
+            // Optional: Sync with backend if you want persistent cloud storage later
+            // await ApiAdapter.put('/ai/settings', ...);
+
+            toast.success("AI API keys saved successfully!");
         } catch (error) {
             toast.error("Failed to update AI settings");
         } finally {
@@ -120,8 +151,8 @@ export default function SettingsPage() {
                         <button
                             onClick={() => setActiveTab('profile')}
                             className={`flex w-full items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-colors ${activeTab === 'profile'
-                                    ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400'
-                                    : 'text-zinc-600 hover:bg-zinc-50 dark:text-zinc-400 dark:hover:bg-zinc-900'
+                                ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400'
+                                : 'text-zinc-600 hover:bg-zinc-50 dark:text-zinc-400 dark:hover:bg-zinc-900'
                                 }`}
                         >
                             <User className="h-5 w-5" />
@@ -130,8 +161,8 @@ export default function SettingsPage() {
                         <button
                             onClick={() => setActiveTab('ai')}
                             className={`flex w-full items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-colors ${activeTab === 'ai'
-                                    ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400'
-                                    : 'text-zinc-600 hover:bg-zinc-50 dark:text-zinc-400 dark:hover:bg-zinc-900'
+                                ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400'
+                                : 'text-zinc-600 hover:bg-zinc-50 dark:text-zinc-400 dark:hover:bg-zinc-900'
                                 }`}
                         >
                             <Brain className="h-5 w-5" />
@@ -244,8 +275,8 @@ export default function SettingsPage() {
                                             </label>
                                             <div className="flex gap-4">
                                                 <label className={`flex flex-1 cursor-pointer items-center justify-between rounded-xl border p-4 transition-all ${aiSettings.primary_provider === 'gemini'
-                                                        ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 dark:border-indigo-500'
-                                                        : 'border-zinc-200 hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900'
+                                                    ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 dark:border-indigo-500'
+                                                    : 'border-zinc-200 hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900'
                                                     }`}>
                                                     <div className="flex items-center gap-3">
                                                         <div className={`h-4 w-4 rounded-full border-2 ${aiSettings.primary_provider === 'gemini' ? 'border-indigo-600 bg-indigo-600' : 'border-zinc-400'
@@ -261,8 +292,8 @@ export default function SettingsPage() {
                                                 </label>
 
                                                 <label className={`flex flex-1 cursor-pointer items-center justify-between rounded-xl border p-4 transition-all ${aiSettings.primary_provider === 'openai'
-                                                        ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 dark:border-indigo-500'
-                                                        : 'border-zinc-200 hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900'
+                                                    ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 dark:border-indigo-500'
+                                                    : 'border-zinc-200 hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900'
                                                     }`}>
                                                     <div className="flex items-center gap-3">
                                                         <div className={`h-4 w-4 rounded-full border-2 ${aiSettings.primary_provider === 'openai' ? 'border-indigo-600 bg-indigo-600' : 'border-zinc-400'

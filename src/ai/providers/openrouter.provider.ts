@@ -5,6 +5,7 @@ const DEFAULT_MODEL = 'openai/gpt-4o-mini';
 const TIMEOUT_MS = 30000;
 
 export class OpenRouterProvider implements AIProvider {
+  name = 'OpenRouter';
   private apiKey: string;
   private model: string;
 
@@ -67,6 +68,8 @@ export class OpenRouterProvider implements AIProvider {
       };
     } catch (error) {
       clearTimeout(timeoutId);
+
+      console.error('[OpenRouterProvider] Fetch error:', error);
 
       if (error instanceof Error) {
         if (error.name === 'AbortError') {

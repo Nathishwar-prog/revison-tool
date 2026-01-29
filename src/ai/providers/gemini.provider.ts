@@ -1,17 +1,16 @@
 import { AIProvider, AIPromptConfig, AIResponse } from '../ai.service';
 
-// Based on API ListModels check, these are the confirmed available models for this key
 const MODELS_TO_TRY = [
-  'gemini-2.5-flash',
-  'gemini-1.5-flash-8b',
   'gemini-1.5-flash',
-  'gemini-2.0-flash-exp'
+  'gemini-1.5-pro',
+  'gemini-1.0-pro'
 ];
 
 const BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
 const TIMEOUT_MS = 60000;
 
 export class GeminiProvider implements AIProvider {
+  name = 'Gemini';
   private apiKey: string;
 
   constructor(apiKey: string) {
@@ -72,7 +71,8 @@ export class GeminiProvider implements AIProvider {
           }
 
           if (response.status === 404 || response.status === 400) {
-            console.warn(`[GeminiProvider] Model ${cleanModel} failed (${response.status}). Trying next...`);
+            const errBody = await response.json().catch(() => ({}));
+            console.warn(`[GeminiProvider] Model ${cleanModel} failed (${response.status}). Details:`, JSON.stringify(errBody));
             continue;
           }
 

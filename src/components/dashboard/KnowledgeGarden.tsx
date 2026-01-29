@@ -5,8 +5,9 @@ import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Stars, Environment, Cloud } from '@react-three/drei';
 import { Knowledge, LearningMetrics } from '@/domain/knowledge/knowledge.model';
 import { PlantNode } from './garden/PlantNode';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, GraduationCap } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { VivaVoceModal } from './VivaVoceModal';
 
 interface KnowledgeGardenProps {
     knowledge: Knowledge[];
@@ -43,8 +44,18 @@ export function KnowledgeGarden({ knowledge, metrics, onNodeSelect }: KnowledgeG
         );
     }
 
+    // State for local selection if parent doesn't handle it fully, or just to show overlay
+    const [selectedNode, setSelectedNode] = useState<Knowledge | null>(null);
+    const [vivaNode, setVivaNode] = useState<Knowledge | null>(null);
+
+    const handleNodeClick = (k: Knowledge) => {
+        setSelectedNode(k);
+        onNodeSelect(k);
+    };
+
     return (
         <div className="relative h-[600px] w-full overflow-hidden rounded-3xl border border-emerald-500/20 bg-gradient-to-b from-indigo-950 to-emerald-950/40 shadow-2xl group ring-1 ring-white/10">
+            {/* ... Header and Legend ... */}
             {/* Header */}
             <div className="absolute left-6 top-6 z-10 pointer-events-none">
                 <h3 className="flex items-center gap-2 text-xl font-bold text-emerald-100 drop-shadow-md">
@@ -100,7 +111,7 @@ export function KnowledgeGarden({ knowledge, metrics, onNodeSelect }: KnowledgeG
                                 item={node}
                                 metrics={metric}
                                 position={node.position}
-                                onClick={onNodeSelect}
+                                onClick={handleNodeClick}
                             />
                         );
                     })}
@@ -108,7 +119,7 @@ export function KnowledgeGarden({ knowledge, metrics, onNodeSelect }: KnowledgeG
 
                 <OrbitControls
                     maxPolarAngle={Math.PI / 2 - 0.1} // Prevent going below ground
-                    autoRotate
+                    autoRotate={!selectedNode} // Stop rotating when something selected
                     autoRotateSpeed={0.5}
                     maxDistance={30}
                     minDistance={5}
@@ -118,6 +129,59 @@ export function KnowledgeGarden({ knowledge, metrics, onNodeSelect }: KnowledgeG
             <div className="absolute bottom-4 right-6 z-10 text-[10px] text-emerald-500/40 pointer-events-none font-mono tracking-widest">
                 ECOSYSTEM V1.0
             </div>
+
+            {/* Selected Details Overlay */}
+            <AnimatePresence>
+                {selectedNode && (
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                        className="absolute bottom-6 left-6 right-6 z-20 p-6 bg-black/80 backdrop-blur-xl border border-emerald-500/30 rounded-2xl shadow-2xl"
+                    >
+                        <div className="flex justify-between items-start">
+                            <div>
+                                <h4 className="text-xl font-bold text-white flex items-center gap-2">
+                                    {selectedNode.title}
+                                </h4>
+                                <div className="flex gap-2 mt-2">
+                                    <span className="text-xs bg-emerald-500/20 text-emerald-300 px-2 py-1 rounded border border-emerald-500/30">
+                                        {selectedNode.domain || 'General'}
+                                    </span>
+                                    <span className="text-xs bg-white/10 text-zinc-400 px-2 py-1 rounded">
+                                        Confidence: {selectedNode.confidenceLevel}/5
+                                    </span>
+                                </div>
+                                <p className="mt-2 text-sm text-zinc-300 line-clamp-2 max-w-2xl">
+                                    {selectedNode.content.summary || selectedNode.content.definition}
+                                </p>
+                            </div>
+                            <button onClick={() => setSelectedNode(null)} className="text-zinc-500 hover:text-white p-2">
+                                <AlertCircle className="w-5 h-5 rotate-45" /> {/* Close Iconish */}
+                            </button>
+                        </div>
+
+                        <div className="flex gap-3 mt-4">
+                            <button
+                                onClick={() => setVivaNode(selectedNode)}
+                                className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold rounded-xl transition-colors shadow-lg shadow-emerald-600/20"
+                            >
+                                <GraduationCap className="h-4 w-4" />
+                                Start Viva Voce
+                            </button>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Viva Voce Modal */}
+            {vivaNode && (
+                <VivaVoceModal
+                    knowledge={vivaNode}
+                    isOpen={!!vivaNode}
+                    onClose={() => setVivaNode(null)}
+                />
+            )}
         </div>
     );
 }
