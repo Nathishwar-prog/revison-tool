@@ -38,8 +38,8 @@ const AIOru = ({ status }: { status: string }) => {
                 variants={variants}
                 animate={status}
                 className={`relative z-10 w-24 h-24 rounded-full shadow-[0_0_60px_rgba(79,70,229,0.6)] ${status === 'listening' ? 'bg-gradient-to-r from-rose-500 to-orange-500' :
-                        status === 'processing' ? 'bg-gradient-to-br from-violet-600 to-indigo-600' :
-                            'bg-gradient-to-tr from-cyan-500 to-blue-600'
+                    status === 'processing' ? 'bg-gradient-to-br from-violet-600 to-indigo-600' :
+                        'bg-gradient-to-tr from-cyan-500 to-blue-600'
                     }`}
             >
                 <div className="absolute inset-0 rounded-full mix-blend-overlay opacity-50 bg-[url('https://grainy-gradients.vercel.app/noise.svg')]"></div>
@@ -147,6 +147,7 @@ export function VivaVoceModal({ knowledge, isOpen, onClose }: VivaVoceModalProps
 
         recognition.interimResults = true;
         recognition.lang = 'en-US';
+        recognition.continuous = true; // Fix: Keep listening until manually stopped
 
         recognition.onstart = () => setStatus('listening');
         recognition.onresult = (event: any) => {
@@ -155,9 +156,17 @@ export function VivaVoceModal({ knowledge, isOpen, onClose }: VivaVoceModalProps
                 .join('');
             setCurrentTranscript(transcript);
         };
+
+        // Remove auto-submit on silence/end. 
+        // We now rely on user manual stop or silence timeout if we wanted (but user requested manual control essentially)
         recognition.onend = () => {
-            if (currentTranscript.trim()) submitAnswer(currentTranscript);
-            else setStatus('idle');
+            // Just go back to idle, don't auto-submit unless we define that behavior.
+            // But to support "click and speak... until I complete", manual stop is best.
+            // If we want to support "auto-send on stop", we can do it in stopListening wrapper.
+            if (status === 'listening') {
+                // If it stopped unexpectedly (network, etc), just idle.
+                setStatus('idle');
+            }
         };
 
         recognitionRef.current = recognition;
@@ -165,7 +174,13 @@ export function VivaVoceModal({ knowledge, isOpen, onClose }: VivaVoceModalProps
     };
 
     const stopListening = () => {
-        if (recognitionRef.current) recognitionRef.current.stop();
+        if (recognitionRef.current) {
+            recognitionRef.current.stop();
+            // Submit only if we have content
+            if (currentTranscript.trim()) {
+                submitAnswer(currentTranscript);
+            }
+        }
         setStatus('idle');
     };
 
@@ -270,8 +285,8 @@ export function VivaVoceModal({ knowledge, isOpen, onClose }: VivaVoceModalProps
                                     className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                                 >
                                     <div className={`max-w-[85%] rounded-3xl p-5 md:p-6 text-sm md:text-base leading-relaxed shadow-lg ${msg.role === 'user'
-                                            ? 'bg-gradient-to-br from-indigo-600 to-violet-600 text-white rounded-tr-sm'
-                                            : 'bg-zinc-800/80 border border-white/5 text-zinc-200 rounded-tl-sm'
+                                        ? 'bg-gradient-to-br from-indigo-600 to-violet-600 text-white rounded-tr-sm'
+                                        : 'bg-zinc-800/80 border border-white/5 text-zinc-200 rounded-tl-sm'
                                         }`}>
                                         <p>{msg.content}</p>
 
@@ -316,8 +331,8 @@ export function VivaVoceModal({ knowledge, isOpen, onClose }: VivaVoceModalProps
                                     whileTap={{ scale: 0.95 }}
                                     onClick={toggleListening}
                                     className={`relative z-10 w-16 h-16 rounded-full flex items-center justify-center transition-all shadow-xl ${status === 'listening'
-                                            ? 'bg-rose-600 text-white shadow-rose-600/30'
-                                            : 'bg-indigo-600 text-white hover:bg-indigo-500 shadow-indigo-600/30'
+                                        ? 'bg-rose-600 text-white shadow-rose-600/30'
+                                        : 'bg-indigo-600 text-white hover:bg-indigo-500 shadow-indigo-600/30'
                                         }`}
                                 >
                                     {status === 'listening' ? <AudioWaveform className="w-8 h-8 animate-pulse" /> : <Mic className="w-8 h-8" />}

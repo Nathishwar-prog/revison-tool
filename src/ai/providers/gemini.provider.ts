@@ -1,11 +1,21 @@
 import { AIProvider, AIPromptConfig, AIResponse } from '../ai.service';
 
 const MODELS_TO_TRY = [
-  'gemini-1.5-flash',
+  // User requested priority (Newest/Experimental)
+  'gemini-2.0-flash-exp',
   'gemini-1.5-pro',
-  'gemini-1.0-pro'
+  'gemini-1.5-flash',
+  'gemini-1.5-flash-8b',
+
+  // Stable/Legacy Fallbacks
+  'gemini-1.0-pro',
+
+  // Future/Hypothetical (will fail gracefully if not available)
+  'gemini-3-pro',
+  'gemini-2.5-flash'
 ];
 
+// v1beta is required for newer models like 1.5-flash and 2.0-flash-exp
 const BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
 const TIMEOUT_MS = 60000;
 
