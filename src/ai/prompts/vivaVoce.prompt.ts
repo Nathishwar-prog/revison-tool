@@ -49,6 +49,11 @@ Evaluate the student's answer.
 1. Is it conceptually correct?
 2. Did they demonstrate deep understanding?
 
-Return valid JSON evaluation.
+Evaluate the student's answer.
+1. Is it conceptually correct?
+2. Did they demonstrate deep understanding?
+
+Return valid JSON evaluation. 
+IMPORTANT: Output ONLY the JSON object. Do not wrap in markdown blocks. Do not add introductory text.
 `.trim();
 }

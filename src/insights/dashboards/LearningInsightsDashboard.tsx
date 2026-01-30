@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  TrendingUp, 
-  AlertTriangle, 
+import {
+  TrendingUp,
+  AlertTriangle,
   Calendar,
   Brain,
   Target,
@@ -16,13 +16,13 @@ import {
   ChevronRight,
   PieChart
 } from 'lucide-react';
-import { 
-  LineChart, 
-  Line, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
   ResponsiveContainer,
   PieChart as RechartsPieChart,
   Pie,
@@ -132,12 +132,12 @@ function DomainPieChart({ knowledge }: { knowledge: any[] }) {
                 <Cell key={`cell-${index}`} fill={DOMAIN_COLORS[index % DOMAIN_COLORS.length]} />
               ))}
             </Pie>
-            <Tooltip 
-              contentStyle={{ 
-                backgroundColor: 'rgba(255,255,255,0.95)', 
+            <Tooltip
+              contentStyle={{
+                backgroundColor: 'rgba(255,255,255,0.95)',
                 borderRadius: '12px',
                 border: '1px solid #e5e7eb'
-              }} 
+              }}
             />
           </RechartsPieChart>
         </ResponsiveContainer>
@@ -155,8 +155,8 @@ function WeeklyProgressChart({ history }: { history: any[] }) {
 
   const data = last7Days.map(date => {
     const dayName = new Date(date).toLocaleDateString('en-US', { weekday: 'short' });
-    const revisions = history.filter((h: any) => 
-      h.timestamp?.split('T')[0] === date
+    const revisions = history.filter((h: any) =>
+      (h.revisedAt || h.timestamp)?.split('T')[0] === date
     ).length;
     return { day: dayName, revisions, date };
   });
@@ -178,17 +178,17 @@ function WeeklyProgressChart({ history }: { history: any[] }) {
             <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
             <XAxis dataKey="day" tick={{ fontSize: 12 }} stroke="#9ca3af" />
             <YAxis tick={{ fontSize: 12 }} stroke="#9ca3af" />
-            <Tooltip 
-              contentStyle={{ 
-                backgroundColor: 'rgba(255,255,255,0.95)', 
+            <Tooltip
+              contentStyle={{
+                backgroundColor: 'rgba(255,255,255,0.95)',
                 borderRadius: '12px',
                 border: '1px solid #e5e7eb'
               }}
               formatter={(value: number) => [`${value} revisions`, 'Completed']}
             />
-            <Bar 
-              dataKey="revisions" 
-              fill="url(#colorGradient)" 
+            <Bar
+              dataKey="revisions"
+              fill="url(#colorGradient)"
               radius={[8, 8, 0, 0]}
             />
             <defs>
@@ -215,7 +215,7 @@ function RetentionRateChart({ knowledge }: { knowledge: any[] }) {
     };
   });
 
-  const avgConfidence = knowledge.length > 0 
+  const avgConfidence = knowledge.length > 0
     ? (knowledge.reduce((sum: number, k: any) => sum + (k.confidenceLevel || 0), 0) / knowledge.length).toFixed(1)
     : '0.0';
 
@@ -246,8 +246,8 @@ function RetentionRateChart({ knowledge }: { knowledge: any[] }) {
                 animate={{ width: `${item.percentage}%` }}
                 transition={{ delay: 0.5 + index * 0.1, duration: 0.5 }}
                 className="h-full rounded-full"
-                style={{ 
-                  background: `linear-gradient(90deg, ${DOMAIN_COLORS[index]}, ${DOMAIN_COLORS[(index + 1) % DOMAIN_COLORS.length]})` 
+                style={{
+                  background: `linear-gradient(90deg, ${DOMAIN_COLORS[index]}, ${DOMAIN_COLORS[(index + 1) % DOMAIN_COLORS.length]})`
                 }}
               />
             </div>
@@ -305,22 +305,20 @@ function DailyPlanCard() {
           <div className="flex gap-2">
             <button
               onClick={() => setSessionLength('short')}
-              className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
-                sessionLength === 'short'
-                  ? 'bg-indigo-600 text-white'
-                  : 'bg-white text-zinc-600 hover:bg-zinc-50 dark:bg-zinc-800 dark:text-zinc-300'
-              }`}
+              className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-medium transition-all ${sessionLength === 'short'
+                ? 'bg-indigo-600 text-white'
+                : 'bg-white text-zinc-600 hover:bg-zinc-50 dark:bg-zinc-800 dark:text-zinc-300'
+                }`}
             >
               <Clock className="h-4 w-4" />
               Short (15-20 min)
             </button>
             <button
               onClick={() => setSessionLength('long')}
-              className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
-                sessionLength === 'long'
-                  ? 'bg-indigo-600 text-white'
-                  : 'bg-white text-zinc-600 hover:bg-zinc-50 dark:bg-zinc-800 dark:text-zinc-300'
-              }`}
+              className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-medium transition-all ${sessionLength === 'long'
+                ? 'bg-indigo-600 text-white'
+                : 'bg-white text-zinc-600 hover:bg-zinc-50 dark:bg-zinc-800 dark:text-zinc-300'
+                }`}
             >
               <Clock className="h-4 w-4" />
               Long (45-60 min)
@@ -453,18 +451,36 @@ export function LearningInsightsDashboard() {
       color: 'text-purple-600',
       bg: 'bg-purple-50',
     },
+    // New High-Value Stats (Moved from bottom)
     {
-      label: 'Weak Areas',
-      value: (insights.weakConcepts || []).length,
-      icon: AlertTriangle,
-      color: 'text-red-600',
-      bg: 'bg-red-50',
+      label: 'Most Active',
+      value: insights.learningPattern?.mostActiveDay || 'N/A',
+      icon: BarChart3,
+      color: 'text-rose-600',
+      bg: 'bg-rose-50',
+      subtitle: 'Peak performance day'
     },
+    {
+      label: 'Top Domain',
+      value: insights.learningPattern?.strongestDomain || 'N/A',
+      icon: Sparkles,
+      color: 'text-cyan-600',
+      bg: 'bg-cyan-50',
+      subtitle: 'Your strongest area'
+    },
+    {
+      label: 'Weakest Domain',
+      value: insights.learningPattern?.weakestDomain || 'N/A',
+      icon: AlertTriangle,
+      color: 'text-orange-600',
+      bg: 'bg-orange-50',
+      subtitle: 'Needs more focus'
+    }
   ];
 
   return (
     <div className="space-y-8">
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat, index) => (
           <StatCard key={stat.label} {...stat} delay={index * 0.05} />
         ))}
@@ -483,8 +499,8 @@ export function LearningInsightsDashboard() {
               Confidence Trends
             </h2>
           </div>
-          <ConfidenceTrendChart 
-            data={trendData} 
+          <ConfidenceTrendChart
+            data={trendData}
             title="Overall Confidence Over Time"
           />
         </section>
@@ -516,44 +532,7 @@ export function LearningInsightsDashboard() {
         <RevisionHeatmap data={heatmapData} />
       </section>
 
-      {insights.learningPattern && (
-        <motion.section
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6 }}
-        >
-          <h2 className="mb-4 flex items-center gap-2 text-xl font-bold text-zinc-900 dark:text-zinc-50">
-            <BarChart3 className="h-5 w-5 text-indigo-500" />
-            Learning Insights
-          </h2>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-              <p className="text-sm text-zinc-500">Most Active Day</p>
-              <p className="mt-1 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-                {insights.learningPattern.mostActiveDay}
-              </p>
-            </div>
-            <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-              <p className="text-sm text-zinc-500">Avg Revisions/Week</p>
-              <p className="mt-1 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-                {insights.learningPattern.avgRevisionsPerWeek}
-              </p>
-            </div>
-            <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-              <p className="text-sm text-zinc-500">Strongest Domain</p>
-              <p className="mt-1 text-lg font-semibold text-emerald-600 dark:text-emerald-400">
-                {insights.learningPattern.strongestDomain}
-              </p>
-            </div>
-            <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-              <p className="text-sm text-zinc-500">Weakest Domain</p>
-              <p className="mt-1 text-lg font-semibold text-red-600 dark:text-red-400">
-                {insights.learningPattern.weakestDomain}
-              </p>
-            </div>
-          </div>
-        </motion.section>
-      )}
+      {/* Bottom text section removed to reduce clutter as per user request */}
     </div>
   );
 }

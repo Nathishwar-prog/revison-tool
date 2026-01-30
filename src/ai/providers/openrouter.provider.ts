@@ -1,4 +1,4 @@
-import { AIProvider, AIPromptConfig, AIResponse } from '../ai.service';
+import { AIProvider, AIPromptConfig, AIResponse } from '../ai-types';
 
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const DEFAULT_MODEL = 'openai/gpt-4o-mini';
@@ -12,6 +12,11 @@ export class OpenRouterProvider implements AIProvider {
   constructor(apiKey: string, model: string = DEFAULT_MODEL) {
     this.apiKey = apiKey;
     this.model = model;
+  }
+
+  async healthCheck(): Promise<boolean> {
+    if (!this.apiKey) return false;
+    return true; // Optimistic check
   }
 
   async generateResponse(config: AIPromptConfig): Promise<AIResponse> {
@@ -35,6 +40,7 @@ export class OpenRouterProvider implements AIProvider {
           ],
           temperature: 0.7,
           max_tokens: 2048,
+          response_format: config.format === 'json' ? { type: 'json_object' } : undefined,
         }),
         signal: controller.signal,
       });

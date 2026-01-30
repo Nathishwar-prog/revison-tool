@@ -5,9 +5,10 @@ import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Stars, Environment, Cloud } from '@react-three/drei';
 import { Knowledge, LearningMetrics } from '@/domain/knowledge/knowledge.model';
 import { PlantNode } from './garden/PlantNode';
-import { AlertCircle, GraduationCap } from 'lucide-react';
+import { AlertCircle, GraduationCap, Telescope } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { VivaVoceModal } from './VivaVoceModal';
+import { toast } from 'sonner';
 
 interface KnowledgeGardenProps {
     knowledge: Knowledge[];
@@ -36,6 +37,45 @@ export function KnowledgeGarden({ knowledge, metrics, onNodeSelect }: KnowledgeG
         });
     }, [knowledge]);
 
+    const [gaps, setGaps] = useState<any[]>([]);
+    const [isAnalyzingGaps, setIsAnalyzingGaps] = useState(false);
+
+    const handleAnalyzeGaps = async () => {
+        setIsAnalyzingGaps(true);
+        try {
+            const response = await fetch('/api/insights/gaps', { method: 'POST' });
+            const data = await response.json();
+            if (data.gaps) {
+                setGaps(data.gaps);
+                toast.success(`Found ${data.gaps.length} knowledge gaps!`);
+            }
+        } catch (error) {
+            toast.error("Failed to analyze gaps");
+        } finally {
+            setIsAnalyzingGaps(false);
+        }
+    };
+
+    const gapNodes = useMemo(() => {
+        return gaps.map((gap, i) => {
+            // Position gaps in the outer rim or interspersed
+            const angle = (i * 2.39996) + 100; // Offset angle
+            const radius = 6 * Math.sqrt(i + 15); // Further out
+            return {
+                id: `gap-${i}`,
+                title: gap.concept,
+                domain: gap.domain,
+                type: 'concept',
+                confidenceLevel: 0,
+                content: { definition: gap.reason, simpleExplanation: 'Missing concept identified by AI' },
+                position: [radius * Math.cos(angle), 0, radius * Math.sin(angle)] as [number, number, number],
+                isGap: true
+            } as any; // Cast to any to avoid strict Knowledge type checks for temp nodes
+        });
+    }, [gaps]);
+
+    const allNodes = [...gardenNodes, ...gapNodes];
+
     if (!knowledge || knowledge.length === 0) {
         return (
             <div className="flex h-64 items-center justify-center rounded-3xl border bg-black/60 dark:bg-black/40">
@@ -55,7 +95,6 @@ export function KnowledgeGarden({ knowledge, metrics, onNodeSelect }: KnowledgeG
 
     return (
         <div className="relative h-[600px] w-full overflow-hidden rounded-3xl border border-emerald-500/20 bg-gradient-to-b from-indigo-950 to-emerald-950/40 shadow-2xl group ring-1 ring-white/10">
-            {/* ... Header and Legend ... */}
             {/* Header */}
             <div className="absolute left-6 top-6 z-10 pointer-events-none">
                 <h3 className="flex items-center gap-2 text-xl font-bold text-emerald-100 drop-shadow-md">
@@ -64,6 +103,16 @@ export function KnowledgeGarden({ knowledge, metrics, onNodeSelect }: KnowledgeG
                 <p className="text-xs text-emerald-200/60 mt-1 font-medium tracking-wide max-w-xs">
                     TEND TO YOUR MIND
                 </p>
+                <div className="mt-4 pointer-events-auto">
+                    <button
+                        onClick={handleAnalyzeGaps}
+                        disabled={isAnalyzingGaps}
+                        className="flex items-center gap-2 px-3 py-1.5 bg-rose-500/10 border border-rose-500/20 text-rose-200 text-xs rounded-full hover:bg-rose-500/20 transition-all backdrop-blur-md"
+                    >
+                        <Telescope className={`w-3 h-3 ${isAnalyzingGaps ? 'animate-spin' : ''}`} />
+                        {isAnalyzingGaps ? 'Scanning...' : 'Gap Hunter'}
+                    </button>
+                </div>
             </div>
 
             {/* Legend */}
@@ -76,6 +125,9 @@ export function KnowledgeGarden({ knowledge, metrics, onNodeSelect }: KnowledgeG
                 </div>
                 <div className="flex items-center gap-2 text-[10px] text-zinc-400 bg-black/40 px-3 py-1.5 rounded-full backdrop-blur-sm border border-white/5">
                     <span className="w-2 h-2 rounded-full bg-stone-500"></span> Withered (Review Needed)
+                </div>
+                <div className="flex items-center gap-2 text-[10px] text-rose-300 bg-rose-900/40 px-3 py-1.5 rounded-full backdrop-blur-sm border border-rose-500/20">
+                    <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span> Knowledge Gap
                 </div>
             </div>
 
@@ -102,16 +154,17 @@ export function KnowledgeGarden({ knowledge, metrics, onNodeSelect }: KnowledgeG
 
                 {/* Plants */}
                 <group position={[0, 0, 0]}>
-                    {gardenNodes.map((node) => {
+                    {allNodes.map((node) => {
                         // Find metrics for this node
                         const metric = metrics?.find(m => m.knowledgeId === node.id);
                         return (
                             <PlantNode
                                 key={node.id}
-                                item={node}
+                                item={node as Knowledge}
                                 metrics={metric}
                                 position={node.position}
                                 onClick={handleNodeClick}
+                                isGap={(node as any).isGap}
                             />
                         );
                     })}
@@ -151,6 +204,11 @@ export function KnowledgeGarden({ knowledge, metrics, onNodeSelect }: KnowledgeG
                                     <span className="text-xs bg-white/10 text-zinc-400 px-2 py-1 rounded">
                                         Confidence: {selectedNode.confidenceLevel}/5
                                     </span>
+                                    {(selectedNode as any).isGap && (
+                                        <span className="text-xs bg-rose-500/20 text-rose-300 px-2 py-1 rounded border border-rose-500/30">
+                                            Gap Detected
+                                        </span>
+                                    )}
                                 </div>
                                 <p className="mt-2 text-sm text-zinc-300 line-clamp-2 max-w-2xl">
                                     {selectedNode.content.summary || selectedNode.content.definition}

@@ -1,4 +1,4 @@
-import { AIProvider, AIPromptConfig, AIResponse } from '../ai.service';
+import { AIProvider, AIPromptConfig, AIResponse } from '../ai-types';
 
 const MODELS_TO_TRY = [
   // User requested priority (Newest/Experimental)
@@ -25,6 +25,13 @@ export class GeminiProvider implements AIProvider {
 
   constructor(apiKey: string) {
     this.apiKey = apiKey;
+  }
+
+  async healthCheck(): Promise<boolean> {
+    if (!this.apiKey) return false;
+    // Simple check: if we have a key, we assume it's "healthy" enough for fallback consideration.
+    // A real check would make a lightweight API call (e.g. list models), but that costs time/quota.
+    return true;
   }
 
   async generateResponse(config: AIPromptConfig): Promise<AIResponse> {
@@ -64,6 +71,7 @@ export class GeminiProvider implements AIProvider {
               generationConfig: {
                 temperature: 0.7,
                 maxOutputTokens: 8192,
+                responseMimeType: config.format === 'json' ? 'application/json' : 'text/plain',
               },
             }),
             signal: controller.signal,

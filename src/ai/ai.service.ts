@@ -10,188 +10,20 @@ import { buildQuizPrompt as buildPersonalizedQuizPrompt, buildQuizSystemPrompt a
 import { buildExplainWeakPrompt, buildExplainWeakSystemPrompt } from './prompts/explainWeak.prompt';
 import { buildDailyPlanPrompt, buildDailyPlanSystemPrompt } from './prompts/dailyPlan.prompt';
 import { buildChatSystemPrompt, buildChatUserPrompt } from './prompts/chat.prompt';
+import { buildCourseGeneratorPrompt, buildCourseGeneratorSystemPrompt } from './prompts/courseGenerator.prompt';
+import { buildGapHunterPrompt, buildGapHunterSystemPrompt } from './prompts/gapHunter.prompt';
 import { getAIKeys, AIKeyConfig } from './storage';
 import { OpenRouterProvider } from './providers/openrouter.provider';
 import { GeminiProvider } from './providers/gemini.provider';
 import { ApiAdapter } from '@/data/adapters/api.adapter';
+import { AIPromptConfig, AIResponse, AIProvider } from './ai-types';
+import { AIRouter } from './providers/ai-router.service';
+export type { AIPromptConfig, AIResponse, AIProvider }; // Re-export for compatibility
 
-export interface AIPromptConfig {
-  systemPrompt: string;
-  userPrompt: string;
-}
+// Types imported from ./ai-types.ts
 
-export type AIFeatureType = 'summary' | 'quiz' | 'explainWeak' | 'dailyPlan';
+/* Legacy Fallback Logic Removed - See AIRouter */
 
-export interface AIResponse {
-  success: boolean;
-  content: string;
-  error?: string;
-}
-
-export interface AIProvider {
-  name: string;
-  generateResponse(config: AIPromptConfig): Promise<AIResponse>;
-}
-
-class MockAIProvider implements AIProvider {
-  name = 'MockAI';
-  async generateResponse(config: AIPromptConfig): Promise<AIResponse> {
-    await new Promise(resolve => setTimeout(resolve, 500));
-
-    if (config.userPrompt.includes('quiz')) {
-      return {
-        success: true,
-        content: JSON.stringify({
-          questions: [
-            {
-              id: 1,
-              difficulty: 'easy',
-              question: 'This is a sample quiz question based on your knowledge.',
-              options: ['A) Option 1', 'B) Option 2', 'C) Option 3', 'D) Option 4'],
-              correctAnswer: 'A',
-              explanation: 'This is a mock response. Connect an AI provider for real personalized quizzes.'
-            }
-          ]
-        })
-      };
-    }
-
-    return {
-      success: true,
-      content: `This is a mock AI response. To enable real AI personalization, configure an AI provider (OpenAI, Anthropic, or local LLM) in the environment settings.\n\nThe prompt that would be sent:\n\n---\nSystem: ${config.systemPrompt.slice(0, 200)}...\n\nUser: ${config.userPrompt.slice(0, 300)}...`
-    };
-  }
-}
-
-const mockProvider = new MockAIProvider();
-
-async function getActiveProvider(): Promise<AIProvider> {
-  if (typeof window === 'undefined') {
-    return mockProvider;
-  }
-
-  const keys = getAIKeys();
-
-  if (keys.primaryKey && keys.primaryProvider === 'openrouter') {
-    return new OpenRouterProvider(keys.primaryKey);
-  }
-
-  if (keys.fallbackKey && keys.fallbackProvider === 'gemini') {
-    return new GeminiProvider(keys.fallbackKey);
-  }
-
-  return mockProvider;
-}
-
-// Helper to merge provided keys with storage/env keys
-async function resolveKeys(providedKeys?: Partial<AIKeyConfig>): Promise<AIKeyConfig> {
-  // 1. Start with provided keys (highest priority)
-  const keys: AIKeyConfig = {
-    primaryProvider: providedKeys?.primaryProvider || '',
-    primaryKey: providedKeys?.primaryKey || '',
-    fallbackProvider: providedKeys?.fallbackProvider || '',
-    fallbackKey: providedKeys?.fallbackKey || '',
-  };
-
-  // 2. If missing, try storage (only works on client)
-  if (typeof window !== 'undefined' && (!keys.primaryKey || !keys.fallbackKey)) {
-    const storageKeys = getAIKeys();
-    if (!keys.primaryKey) {
-      keys.primaryProvider = storageKeys.primaryProvider;
-      keys.primaryKey = storageKeys.primaryKey;
-    }
-    if (!keys.fallbackKey) {
-      keys.fallbackProvider = storageKeys.fallbackProvider;
-      keys.fallbackKey = storageKeys.fallbackKey;
-    }
-  }
-
-  return keys;
-}
-
-// Updated signature
-// Helper to instantiate provider by name
-function createProvider(name: string, key: string): AIProvider | null {
-  if (!key) return null;
-  if (name === 'openrouter' || name === 'openai') return new OpenRouterProvider(key);
-  if (name === 'gemini') return new GeminiProvider(key);
-  return null;
-}
-
-async function generateWithFallback(config: AIPromptConfig, providedKeys?: Partial<AIKeyConfig>): Promise<AIResponse> {
-  const keys = await resolveKeys(providedKeys);
-  const providers: AIProvider[] = [];
-
-  // 1. Add Primary Provider
-  const primary = createProvider(keys.primaryProvider, keys.primaryKey);
-  if (primary) providers.push(primary);
-
-  // 2. Add Fallback Provider
-  const fallback = createProvider(keys.fallbackProvider, keys.fallbackKey);
-  if (fallback) providers.push(fallback);
-
-  // 3. Add Server Fallback (Environment Variables)
-  // Only if client-side keys are missing, we might check env vars here or via proxy below.
-  // Ideally, valid providers from storage are prioritized.
-
-  // Execute with Retry
-  let lastError: string = 'No AI provider configured';
-
-  console.log(`[AIService] Strategy: ${providers.map(p => p.name).join(' -> ')}`);
-
-  for (const provider of providers) {
-    try {
-      console.log(`[AIService] Attempting provider: ${provider.name}`);
-      const response = await provider.generateResponse(config);
-      if (response.success) {
-        console.log(`[AIService] Success with provider: ${provider.name}`);
-        return response;
-      }
-      lastError = response.error || 'Provider failed';
-      console.warn(`[AIService] Provider ${provider.name} failed, trying next... Error: ${lastError}`);
-    } catch (e) {
-      lastError = e instanceof Error ? e.message : 'Unknown error';
-      console.warn(`[AIService] Provider ${provider.name} exception, trying next... Error: ${lastError}`);
-    }
-  }
-
-  // 4. Final Resort: Server Proxy (if on client)
-  if (typeof window !== 'undefined') {
-    try {
-      // If client keys failed (or didn't exist), try the proxy which uses server .env
-      const proxyResult = await ApiAdapter.post('/ai/proxy', config);
-      if (proxyResult && (proxyResult.success || proxyResult.content)) {
-        return proxyResult as AIResponse;
-      }
-    } catch (e) {
-      // console.warn('AI Proxy attempt failed', e);
-    }
-  } else {
-    // Server-side fallback to env vars if not already covered? 
-    // (Assuming storage keys handle main flow, but env vars are backup)
-    const envOpenRouter = process.env.OPENROUTER_API_KEY;
-    const envGemini = process.env.GEMINI_API_KEY;
-
-    if (!keys.primaryKey && !keys.fallbackKey) {
-      if (envOpenRouter) {
-        const p = new OpenRouterProvider(envOpenRouter);
-        const res = await p.generateResponse(config);
-        if (res.success) return res;
-      }
-      if (envGemini) {
-        const p = new GeminiProvider(envGemini);
-        const res = await p.generateResponse(config);
-        if (res.success) return res;
-      }
-    }
-  }
-
-  return {
-    success: false,
-    content: '',
-    error: `All AI providers failed. Last error: ${lastError}`
-  };
-}
 
 export function setAIProvider(provider: AIProvider): void {
 }
@@ -269,7 +101,7 @@ export const AIService = {
         userPrompt: buildSummaryPrompt(context),
       };
 
-      return await generateWithFallback(config);
+      return await AIRouter.getInstance().generate('summary', config);
     } catch (error) {
       return {
         success: false,
@@ -292,9 +124,10 @@ export const AIService = {
       const config: AIPromptConfig = {
         systemPrompt: buildPersonalizedQuizSystemPrompt(),
         userPrompt: buildPersonalizedQuizPrompt(context, questionCount),
+        format: 'json',
       };
 
-      return await generateWithFallback(config);
+      return await AIRouter.getInstance().generate('quiz', config);
     } catch (error) {
       return {
         success: false,
@@ -319,7 +152,7 @@ export const AIService = {
         userPrompt: buildExplainWeakPrompt(context),
       };
 
-      return await generateWithFallback(config);
+      return await AIRouter.getInstance().generate('explainWeak', config);
     } catch (error) {
       return {
         success: false,
@@ -351,7 +184,7 @@ export const AIService = {
         userPrompt: buildDailyPlanPrompt(context),
       };
 
-      return await generateWithFallback(config);
+      return await AIRouter.getInstance().generate('dailyPlan', config);
     } catch (error) {
       return {
         success: false,
@@ -399,7 +232,7 @@ export const AIService = {
         userPrompt: buildChatUserPrompt(message, allKnowledge, allHistory),
       };
 
-      return await generateWithFallback(config);
+      return await AIRouter.getInstance().generate('chat', config);
     } catch (error) {
       return {
         success: false,
@@ -416,9 +249,10 @@ export const AIService = {
       const config: AIPromptConfig = {
         systemPrompt: buildTopicQuizSystemPrompt(),
         userPrompt: buildTopicQuizPrompt(topics, count),
+        format: 'json',
       };
 
-      return await generateWithFallback(config, keys);
+      return await AIRouter.getInstance().generate('quiz', config, keys);
     } catch (error) {
       return {
         success: false,
@@ -441,7 +275,7 @@ export const AIService = {
         userPrompt: buildVivaVoceQuestionPrompt(knowledge),
       };
 
-      return await generateWithFallback(config);
+      return await AIRouter.getInstance().generate('chat', config);
     } catch (error) {
       return {
         success: false,
@@ -463,14 +297,55 @@ export const AIService = {
       const config: AIPromptConfig = {
         systemPrompt: buildVivaVoceSystemPrompt(),
         userPrompt: buildVivaVoceEvaluationPrompt(knowledge, question, userAnswer),
+        format: 'json',
       };
 
-      return await generateWithFallback(config);
+      return await AIRouter.getInstance().generate('chat', config);
     } catch (error) {
       return {
         success: false,
         content: '',
         error: error instanceof Error ? error.message : 'Failed to evaluate answer'
+      };
+    }
+  },
+
+  async generateCourseStructure(content: string): Promise<AIResponse> {
+    try {
+      const config: AIPromptConfig = {
+        systemPrompt: buildCourseGeneratorSystemPrompt(),
+        userPrompt: buildCourseGeneratorPrompt(content),
+        format: 'json',
+      };
+
+      return await AIRouter.getInstance().generate('courseGenerator', config);
+    } catch (error) {
+      return {
+        success: false,
+        content: '',
+        error: error instanceof Error ? error.message : 'Failed to generate course structure'
+      };
+    }
+  },
+
+  async analyzeGaps(ids?: string[]): Promise<AIResponse> {
+    try {
+      // If ids provided, filter, else get all. For now, let's just get all to find global gaps.
+      // In a real app we might limit this.
+      const allKnowledge = await KnowledgeRepository.getAll();
+
+      const config: AIPromptConfig = {
+        systemPrompt: buildGapHunterSystemPrompt(),
+        userPrompt: buildGapHunterPrompt(allKnowledge),
+        format: 'json',
+      };
+
+      return await AIRouter.getInstance().generate('gapHunter', config);
+    } catch (error) {
+      return {
+        success: false,
+        content: '',
+        error: error instanceof Error ? error.message : 'Failed to analyze gaps'
       };
     }
   },

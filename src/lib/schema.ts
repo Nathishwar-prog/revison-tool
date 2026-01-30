@@ -155,3 +155,79 @@ export const revisionHistoryRelations = relations(revisionHistory, ({ one }) => 
         references: [users.id],
     }),
 }));
+
+export const courses = pgTable("courses", {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id").references(() => users.id).notNull(),
+    title: text("title").notNull(),
+    description: text("description"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const courseModules = pgTable("course_modules", {
+    id: uuid("id").primaryKey().defaultRandom(),
+    courseId: uuid("course_id").references(() => courses.id, { onDelete: 'cascade' }).notNull(),
+    title: text("title").notNull(),
+    description: text("description"),
+    orderIndex: integer("order_index").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const courseLessons = pgTable("course_lessons", {
+    id: uuid("id").primaryKey().defaultRandom(),
+    moduleId: uuid("module_id").references(() => courseModules.id, { onDelete: 'cascade' }).notNull(),
+    title: text("title").notNull(),
+    content: text("content"), // Markdown content
+    orderIndex: integer("order_index").notNull(),
+    knowledgeId: text("knowledge_id").references(() => knowledge.id, { onDelete: 'set null' }), // Link to existing knowledge
+    durationSeconds: integer("duration_seconds"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const userKnowledgeState = pgTable("user_knowledge_state", {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id").references(() => users.id).notNull(),
+    knowledgeId: text("knowledge_id").references(() => knowledge.id, { onDelete: 'cascade' }).notNull(),
+    status: text("status").notNull(), // 'gap', 'learning', 'mastered'
+    score: integer("score").default(0).notNull(), // 0-100
+    lastAnalyzedAt: timestamp("last_analyzed_at").defaultNow().notNull(),
+});
+
+export const coursesRelations = relations(courses, ({ one, many }) => ({
+    user: one(users, {
+        fields: [courses.userId],
+        references: [users.id],
+    }),
+    modules: many(courseModules),
+}));
+
+export const courseModulesRelations = relations(courseModules, ({ one, many }) => ({
+    course: one(courses, {
+        fields: [courseModules.courseId],
+        references: [courses.id],
+    }),
+    lessons: many(courseLessons),
+}));
+
+export const courseLessonsRelations = relations(courseLessons, ({ one }) => ({
+    module: one(courseModules, {
+        fields: [courseLessons.moduleId],
+        references: [courseModules.id],
+    }),
+    knowledge: one(knowledge, {
+        fields: [courseLessons.knowledgeId],
+        references: [knowledge.id],
+    }),
+}));
+
+export const userKnowledgeStateRelations = relations(userKnowledgeState, ({ one }) => ({
+    user: one(users, {
+        fields: [userKnowledgeState.userId],
+        references: [users.id],
+    }),
+    knowledge: one(knowledge, {
+        fields: [userKnowledgeState.knowledgeId],
+        references: [knowledge.id],
+    }),
+}));

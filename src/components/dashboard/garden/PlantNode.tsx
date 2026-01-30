@@ -9,9 +9,10 @@ interface PlantNodeProps {
     metrics?: LearningMetrics;
     position: [number, number, number];
     onClick: (item: Knowledge) => void;
+    isGap?: boolean;
 }
 
-export function PlantNode({ item, metrics, position, onClick }: PlantNodeProps) {
+export function PlantNode({ item, metrics, position, onClick, isGap }: PlantNodeProps) {
     const groupRef = useRef<THREE.Group>(null);
     const [hovered, setHovered] = React.useState(false);
 
@@ -20,10 +21,11 @@ export function PlantNode({ item, metrics, position, onClick }: PlantNodeProps) 
         const confidence = item.confidenceLevel || 0;
         const forgetRate = metrics?.forgetRate || 0;
 
+        if (isGap) return 'gap';
         if (forgetRate > 0.4) return 'withered'; // High forget rate = dying
         if (confidence <= 2) return 'sprout';    // Low confidence = baby
         return 'blooming';                       // High confidence = strong
-    }, [item.confidenceLevel, metrics?.forgetRate]);
+    }, [item.confidenceLevel, metrics?.forgetRate, isGap]);
 
     // Visual Traits based on state
     const traits = useMemo(() => {
@@ -35,6 +37,14 @@ export function PlantNode({ item, metrics, position, onClick }: PlantNodeProps) 
                     scale: 0.8,
                     bobSpeed: 0.5,
                     particleColor: '#a8a29e'
+                };
+            case 'gap':
+                return {
+                    color: '#f43f5e', // Red/Rose
+                    stemColor: '#881337',
+                    scale: 0.9,
+                    bobSpeed: 3, // Pulsing fast
+                    particleColor: '#fb7185'
                 };
             case 'sprout':
                 return {
@@ -84,6 +94,18 @@ export function PlantNode({ item, metrics, position, onClick }: PlantNodeProps) 
 
             {/* Plant Head based on state */}
             <group position={[0, 0.5, 0]}>
+                {state === 'gap' && (
+                    <mesh position={[0, 0, 0]}>
+                        <octahedronGeometry args={[0.3, 0]} />
+                        <meshStandardMaterial
+                            color={traits.color}
+                            wireframe
+                            emissive={traits.color}
+                            emissiveIntensity={2}
+                        />
+                    </mesh>
+                )}
+
                 {state === 'sprout' && (
                     <mesh position={[0, 0, 0]}>
                         <sphereGeometry args={[0.2, 16, 16]} />

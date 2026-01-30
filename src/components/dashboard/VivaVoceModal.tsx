@@ -27,7 +27,7 @@ const AIOru = ({ status }: { status: string }) => {
     const variants = {
         idle: { scale: 1, opacity: 0.8, filter: "blur(0px)" },
         listening: { scale: [1, 1.1, 1], opacity: 1, filter: "blur(2px)", transition: { repeat: Infinity, duration: 1.5 } },
-        processing: { rotate: 360, scale: [1, 0.8, 1.2, 1], filter: "blur(5px)", transition: { repeat: Infinity, duration: 2, ease: "easeInOut" } },
+        processing: { rotate: 360, scale: [1, 0.8, 1.2, 1], filter: "blur(5px)", transition: { repeat: Infinity, duration: 2 } },
         speaking: { scale: [1, 1.2, 0.9, 1.3, 1], filter: "blur(4px)", transition: { repeat: Infinity, duration: 0.8 } }
     };
 
@@ -200,7 +200,15 @@ export function VivaVoceModal({ knowledge, isOpen, onClose }: VivaVoceModalProps
 
         if (response.success) {
             try {
-                const jsonStr = response.content.replace(/```json/g, '').replace(/```/g, '').trim();
+                // Robust JSON extraction
+                let jsonStr = response.content;
+                const firstOpen = jsonStr.indexOf('{');
+                const lastClose = jsonStr.lastIndexOf('}');
+
+                if (firstOpen !== -1 && lastClose !== -1) {
+                    jsonStr = jsonStr.substring(firstOpen, lastClose + 1);
+                }
+
                 const evaluation = JSON.parse(jsonStr);
 
                 setMessages(prev => [...prev, {
