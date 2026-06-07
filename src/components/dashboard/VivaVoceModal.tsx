@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useAudioVisualizer } from '@/hooks/useAudioVisualizer';
+import { VoiceService } from '@/ai/voice/voice.service';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Mic, MicOff, Send, Volume2, BookOpen, GraduationCap, AudioWaveform, Sparkles } from 'lucide-react';
 import { Knowledge } from '@/domain/knowledge/knowledge.model';
@@ -22,44 +24,52 @@ interface Message {
 
 // --- Visual Components ---
 
-const AIOru = ({ status }: { status: string }) => {
-    // Orb Animation Variants
-    const variants = {
-        idle: { scale: 1, opacity: 0.8, filter: "blur(0px)" },
-        listening: { scale: [1, 1.1, 1], opacity: 1, filter: "blur(2px)", transition: { repeat: Infinity, duration: 1.5 } },
-        processing: { rotate: 360, scale: [1, 0.8, 1.2, 1], filter: "blur(5px)", transition: { repeat: Infinity, duration: 2 } },
-        speaking: { scale: [1, 1.2, 0.9, 1.3, 1], filter: "blur(4px)", transition: { repeat: Infinity, duration: 0.8 } }
-    };
+import { VoiceActivityCircle } from '@/components/ui/VoiceActivityCircle';
+
+const AvatarVisual = ({ status }: { status: string }) => {
+    const isListening = status === 'listening';
+    const isSpeaking = status === 'speaking' || status === 'processing';
+
+    // Real audio level from mic (only active when listening)
+    const micLevel = useAudioVisualizer(isListening);
+    const [simulatedLevel, setSimulatedLevel] = useState(0);
+
+    // Simulated level for AI speaking pulse
+    useEffect(() => {
+        let frame: number;
+        if (isSpeaking) {
+            const animate = () => {
+                // Sine wave oscillation for "breathing" / speaking look
+                setSimulatedLevel((Math.sin(Date.now() / 150) * 0.5) + 0.5);
+                frame = requestAnimationFrame(animate);
+            };
+            animate();
+        } else {
+            setSimulatedLevel(0);
+        }
+        return () => cancelAnimationFrame(frame);
+    }, [isSpeaking]);
+
+    const activeLevel = isListening ? micLevel : simulatedLevel;
+
+    // Status Text Map
+    const statusText = useMemo(() => {
+        switch (status) {
+            case 'listening': return 'Listening...';
+            case 'processing': return 'Thinking...';
+            case 'speaking': return 'Speaking';
+            case 'idle': return 'Ready';
+            default: return 'Professor';
+        }
+    }, [status]);
 
     return (
-        <div className="relative flex items-center justify-center w-32 h-32 mb-8">
-            {/* Core Orb */}
-            <motion.div
-                variants={variants}
-                animate={status}
-                className={`relative z-10 w-24 h-24 rounded-full shadow-[0_0_60px_rgba(79,70,229,0.6)] ${status === 'listening' ? 'bg-gradient-to-r from-rose-500 to-orange-500' :
-                    status === 'processing' ? 'bg-gradient-to-br from-violet-600 to-indigo-600' :
-                        'bg-gradient-to-tr from-cyan-500 to-blue-600'
-                    }`}
-            >
-                <div className="absolute inset-0 rounded-full mix-blend-overlay opacity-50 bg-[url('https://grainy-gradients.vercel.app/noise.svg')]"></div>
-            </motion.div>
-
-            {/* Outer Rings - Only visible when active */}
-            {status !== 'idle' && (
-                <>
-                    <motion.div
-                        animate={{ scale: [1, 1.5], opacity: [0.5, 0] }}
-                        transition={{ repeat: Infinity, duration: 2 }}
-                        className="absolute inset-0 rounded-full border border-white/20"
-                    />
-                    <motion.div
-                        animate={{ scale: [1, 2], opacity: [0.3, 0] }}
-                        transition={{ repeat: Infinity, duration: 2, delay: 0.5 }}
-                        className="absolute inset-0 rounded-full border border-white/10"
-                    />
-                </>
-            )}
+        <div className="relative flex flex-col items-center justify-center w-full h-80 mb-4 scale-90 md:scale-100">
+            <VoiceActivityCircle
+                size={220}
+                level={activeLevel}
+                text={statusText}
+            />
         </div>
     );
 };
@@ -71,8 +81,10 @@ export function VivaVoceModal({ knowledge, isOpen, onClose }: VivaVoceModalProps
     const [currentQuestion, setCurrentQuestion] = useState<string>("");
 
     const recognitionRef = useRef<any>(null);
-    const synthRef = useRef<SpeechSynthesis | null>(null);
+    const audioRef = useRef<HTMLAudioElement | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const speechQueue = useRef<string[]>([]);
+    const isSpeakingRef = useRef(false);
 
     // Auto-scroll to bottom
     useEffect(() => {
@@ -86,6 +98,7 @@ export function VivaVoceModal({ knowledge, isOpen, onClose }: VivaVoceModalProps
         return () => {
             stopSpeaking();
             stopListening();
+            speechQueue.current = [];
         };
     }, [isOpen, knowledge]);
 
@@ -100,38 +113,74 @@ export function VivaVoceModal({ knowledge, isOpen, onClose }: VivaVoceModalProps
             const question = response.content;
             setCurrentQuestion(question);
             setMessages(prev => [...prev, { role: 'ai', content: question }]);
-            speak(question, () => setStatus('idle'));
+            speak(question);
         } else {
             toast.error("Professor connection failed.");
             setStatus('idle');
         }
     };
 
-    const speak = (text: string, onEnd?: () => void) => {
-        if (typeof window === 'undefined') return;
-        stopSpeaking();
+    // --- Speech Queue System ---
+
+    const processQueue = async () => {
+        if (isSpeakingRef.current || speechQueue.current.length === 0) return;
+
+        isSpeakingRef.current = true;
+        const text = speechQueue.current.shift(); // Get next message
+
+        if (!text) {
+            isSpeakingRef.current = false;
+            return;
+        }
+
         setStatus('speaking');
 
-        const utterance = new SpeechSynthesisUtterance(text);
-        // Tune for a more natural pace
-        utterance.rate = 1.05;
-        utterance.pitch = 1.0;
+        // 1. Try Viva Voce Engine (Python Service)
+        const audio = await VoiceService.speak({
+            text,
+            emotion: 'neutral',
+            personality: 'tutor'
+        });
 
-        const voices = window.speechSynthesis.getVoices();
-        // Try to find a good deep voice
-        const preferredVoice = voices.find(v => v.name.includes("Google US English") || v.name.includes("Samantha"));
-        if (preferredVoice) utterance.voice = preferredVoice;
+        if (audio) {
+            audioRef.current = audio;
+            audio.onended = () => {
+                isSpeakingRef.current = false;
+                processQueue(); // Process next item
+                if (speechQueue.current.length === 0) setStatus('idle');
+            };
+            audio.play().catch(e => {
+                console.error("Audio playback error", e);
+                // Fallback
+                VoiceService.browserSpeak(text, () => {
+                    isSpeakingRef.current = false;
+                    processQueue();
+                    if (speechQueue.current.length === 0) setStatus('idle');
+                });
+            });
+        } else {
+            // 2. Fallback to Browser TTS
+            VoiceService.browserSpeak(text, () => {
+                isSpeakingRef.current = false;
+                processQueue();
+                if (speechQueue.current.length === 0) setStatus('idle');
+            });
+        }
+    };
 
-        utterance.onend = () => {
-            if (onEnd) onEnd();
-            else setStatus('idle');
-        };
-
-        window.speechSynthesis.speak(utterance);
-        synthRef.current = window.speechSynthesis;
+    const speak = (text: string) => {
+        if (typeof window === 'undefined') return;
+        speechQueue.current.push(text);
+        processQueue();
     };
 
     const stopSpeaking = () => {
+        speechQueue.current = []; // Clear queue
+        isSpeakingRef.current = false;
+        if (audioRef.current) {
+            audioRef.current.pause();
+            audioRef.current = null;
+        }
         if (window.speechSynthesis) window.speechSynthesis.cancel();
     };
 
@@ -217,15 +266,12 @@ export function VivaVoceModal({ knowledge, isOpen, onClose }: VivaVoceModalProps
                     isCorrect: evaluation.correct
                 }]);
 
-                speak(evaluation.feedback, () => {
-                    if (evaluation.followUp) {
-                        setMessages(prev => [...prev, { role: 'ai', content: evaluation.followUp }]);
-                        setCurrentQuestion(evaluation.followUp);
-                        speak(evaluation.followUp, () => setStatus('idle'));
-                    } else {
-                        setStatus('idle');
-                    }
-                });
+                speak(evaluation.feedback);
+                if (evaluation.followUp) {
+                    setMessages(prev => [...prev, { role: 'ai', content: evaluation.followUp }]);
+                    setCurrentQuestion(evaluation.followUp);
+                    speak(evaluation.followUp);
+                }
             } catch (e) {
                 const errorMsg = "I couldn't quite evaluate that. Let's move on.";
                 setMessages(prev => [...prev, { role: 'ai', content: errorMsg }]);
@@ -257,9 +303,9 @@ export function VivaVoceModal({ knowledge, isOpen, onClose }: VivaVoceModalProps
                     {/* LEFT SIDE: Avatar & Status */}
                     <div className="md:w-1/3 bg-black/40 border-b md:border-b-0 md:border-r border-white/5 p-8 flex flex-col items-center justify-center text-center relative overflow-hidden">
                         {/* Ambient Background Glow */}
-                        <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-indigo-500/20 blur-[100px] rounded-full transition-all duration-1000 ${status === 'listening' ? 'bg-rose-500/20' : ''}`} />
+                        <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-indigo-500/10 blur-[100px] rounded-full transition-all duration-1000 ${status === 'listening' ? 'bg-rose-500/10' : ''}`} />
 
-                        <AIOru status={status} />
+                        <AvatarVisual status={status} />
 
                         <div className="relative z-10 space-y-2">
                             <h2 className="text-2xl font-bold text-white tracking-tight">Professor KnowGrow</h2>

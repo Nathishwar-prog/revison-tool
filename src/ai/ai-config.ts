@@ -28,7 +28,7 @@ export const AI_CONFIG = {
     MODELS: {
         // Local (Ollama)
         OLLAMA_CODING: 'deepseek-coder:6.7b',
-        OLLAMA_REASONING: 'llama3:8b',
+        OLLAMA_REASONING: 'qwen3:8b',
         OLLAMA_FAST: 'phi3:latest',
         OLLAMA_EMBEDDING: 'nomic-embed-text:latest',
 

@@ -137,7 +137,7 @@ export function KnowledgeTree({ totalRevisions }: KnowledgeTreeProps) {
     const containerRef = useRef<HTMLDivElement>(null);
 
     return (
-        <div ref={containerRef} className="relative h-64 w-full overflow-hidden rounded-3xl border border-emerald-100 bg-gradient-to-b from-sky-50 to-emerald-50 dark:from-sky-950/30 dark:to-emerald-950/30 dark:border-emerald-900/50 shadow-sm transition-all group">
+        <div ref={containerRef} className="relative h-80 w-full overflow-hidden rounded-3xl border border-emerald-100 bg-gradient-to-b from-sky-50 to-emerald-50 dark:from-sky-950/30 dark:to-emerald-950/30 dark:border-emerald-900/50 shadow-sm transition-all group">
             {/* Header Overlay */}
             <div className="absolute top-4 left-6 z-10">
                 <h3 className="text-sm font-bold text-emerald-800 dark:text-emerald-200 uppercase tracking-wide flex items-center gap-2">

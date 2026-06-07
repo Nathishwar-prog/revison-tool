@@ -23,13 +23,16 @@ import { BrainGalaxy } from '@/components/dashboard/BrainGalaxy';
 import { KnowledgeGarden } from '@/components/dashboard/KnowledgeGarden';
 import { NeuralNexus } from '@/components/dashboard/NeuralNexus';
 import { TimeCapsule } from '@/components/dashboard/TimeCapsule';
+import { GapHunterWidget } from '@/components/dashboard/GapHunterWidget';
 
 import { KnowledgeTree } from '@/components/dashboard/KnowledgeTree';
 
 import { ApiAdapter } from '@/data/adapters/api.adapter';
 import { QuizModal } from '@/components/quiz/QuizModal';
+import { useAuth } from '@/context/AuthContext';
 
 export default function Dashboard() {
+  const { user , logout } = useAuth();
   const { knowledge, loading, error } = useKnowledge();
   const [heatmapData, setHeatmapData] = useState([]);
   const [dailyProgress, setDailyProgress] = useState({ completed: 0, target: 10 });
@@ -140,6 +143,7 @@ export default function Dashboard() {
       )
     },
   ];
+  
 
   const container = {
     hidden: { opacity: 0 },
@@ -157,7 +161,7 @@ export default function Dashboard() {
   };
 
   return (
-    <main className="flex-1 container mx-auto px-4 py-8 min-h-screen bg-zinc-50 dark:bg-black selection:bg-indigo-500/30 transition-colors duration-300">
+    <main className="flex-1 container mx-auto px-4 py-8 min-h-screen bg-transparent transition-colors duration-300">
       <QuizModal isOpen={isQuizOpen} onClose={() => setIsQuizOpen(false)} topics={quizTopics} />
 
       <div className="space-y-8 pb-12">
@@ -165,7 +169,7 @@ export default function Dashboard() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-3xl font-extrabold tracking-tight text-zinc-900 dark:text-white">
-              Welcome back, Learner
+              Welcome back, { user?.name || 'Learner' }
             </h1>
             <p className="text-zinc-500 dark:text-zinc-400">
               You have {dueItems.length} concepts waiting for revision today.
@@ -223,13 +227,18 @@ export default function Dashboard() {
             </div>
 
             {/* Time Capsule Overlay */}
-            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 w-full max-w-2xl px-4 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+            <div className="absolute bottom-6 right-6 z-20 w-full max-w-sm px-2 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
               <TimeCapsule
                 startDate={new Date('2026-01-01')}
                 endDate={new Date()}
                 currentDate={viewDate}
                 onChange={setViewDate}
               />
+            </div>
+
+            {/* Gap Hunter Overlay */}
+            <div className="absolute top-6 right-6 z-30 w-80">
+              <GapHunterWidget />
             </div>
 
             {/* 3D View Content */}

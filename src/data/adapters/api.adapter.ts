@@ -1,4 +1,4 @@
-const API_URL = '/api';
+const API_URL = typeof window !== 'undefined' ? '/api' : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api');
 
 export class ApiAdapter {
     private static async getHeaders() {

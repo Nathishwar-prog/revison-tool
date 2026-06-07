@@ -85,7 +85,7 @@ export default function KnowledgeList() {
   if (knowledge.length === 0) {
     return (
       <div className="p-4 md:p-6">
-        <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-50 mb-6">Knowledge Library</h1>
+        <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-50 mb-6">Knowledge Seeds</h1>
         <EmptyState
           icon={BookOpen}
           title="Your knowledge library is empty"
@@ -103,7 +103,7 @@ export default function KnowledgeList() {
   return (
     <div className="space-y-6 p-4 md:p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-50">Knowledge Library</h1>
+        <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-50">Knowledge Seeds</h1>
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2 rounded-lg border bg-white p-1 dark:border-zinc-800 dark:bg-zinc-900">
             <button

@@ -1,4 +1,4 @@
-# KnowGrow Platform (plos-b) — Reviewer Summary
+ KnowGrow Platform (plos-b) — Reviewer Summary
 
 ## Overview
 A Next.js app (App Router) that helps learners capture knowledge, schedule revisions with adaptive spaced repetition, and personalize study with AI. It uses Neon Postgres via Drizzle ORM, JWT auth, and optional AI providers (OpenRouter, Gemini) with a server proxy fallback.

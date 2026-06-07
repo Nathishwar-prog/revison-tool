@@ -6,8 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, BookOpen, FileText, Wand2, Layers, PlayCircle } from 'lucide-react';
+import { Loader2, BookOpen, FileText, Wand2, Layers, PlayCircle, Command, Zap, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
+import { GenerationCinema } from '@/components/courses/GenerationCinema';
 
 interface Lesson {
     title: string;
@@ -77,43 +78,72 @@ export default function CourseImportPage() {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* Input Section */}
-                <div className="space-y-6">
-                    <Card className="border-2 border-primary/10 shadow-lg">
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <FileText className="h-5 w-5 text-primary" />
-                                Input Content
-                            </CardTitle>
-                            <CardDescription>
-                                Paste your raw text, article content, or notes here.
+                {/* Input Section - Magic Studio */}
+                <div className="space-y-6 relative group">
+                    <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 to-violet-600 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
+                    <Card className="relative border-0 bg-black/40 backdrop-blur-xl shadow-2xl overflow-hidden ring-1 ring-white/10">
+                        {/* Interactive Header */}
+                        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-blue-500 to-transparent opacity-50" />
+
+                        <CardHeader className="pb-2">
+                            <div className="flex items-center justify-between">
+                                <CardTitle className="flex items-center gap-3 text-white">
+                                    <div className="p-2 bg-blue-500/10 rounded-lg border border-blue-500/20">
+                                        <Sparkles className="h-5 w-5 text-blue-400" />
+                                    </div>
+                                    <span className="tracking-tight">Knowledge Studio</span>
+                                </CardTitle>
+                                <div className="flex gap-2">
+                                    <Badge variant="outline" className="bg-white/5 border-white/10 text-xs font-mono text-zinc-400">
+                                        <Command className="w-3 h-3 mr-1" /> RAW
+                                    </Badge>
+                                </div>
+                            </div>
+                            <CardDescription className="text-zinc-400 ml-1">
+                                Paste your raw chaos. We'll find the order.
                             </CardDescription>
                         </CardHeader>
-                        <CardContent className="space-y-4">
-                            <Textarea
-                                placeholder="# My React Notes...
-                                
-React is a JavaScript library for building user interfaces.
-Components are the building blocks.
-State is how data changes over time..."
-                                className="min-h-[400px] font-mono text-sm resize-none focus-visible:ring-primary/20"
-                                value={content}
-                                onChange={(e) => setContent(e.target.value)}
-                            />
+
+                        <CardContent className="space-y-6">
+                            <div className="relative group/input">
+                                <div className="absolute -inset-[1px] bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-xl blur-sm opacity-0 group-hover/input:opacity-100 transition duration-500" />
+                                <Textarea
+                                    placeholder="// Paste your notes, articles, or transcripts here...
+// The AI will analyze structure, extract concepts, and build a graph.
+
+# React Hooks Guide
+Hooks are functions that let you use state..."
+                                    className="relative bg-zinc-950/50 border-white/10 min-h-[400px] font-mono text-sm leading-relaxed resize-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 text-zinc-300 placeholder:text-zinc-700 p-6 rounded-xl transition-all selection:bg-blue-500/30"
+                                    value={content}
+                                    onChange={(e) => setContent(e.target.value)}
+                                />
+                                {/* Decorator elements for 'code editor' feel */}
+                                <div className="absolute top-4 right-4 text-[10px] text-zinc-700 font-mono pointer-events-none select-none">
+                                    TXT_MODE
+                                </div>
+                            </div>
+
                             <Button
                                 onClick={handleGenerate}
                                 disabled={isLoading}
-                                className="w-full h-12 text-lg font-medium transition-all hover:scale-[1.02]"
+                                className={`
+                                    w-full h-14 text-lg font-medium tracking-wide transition-all duration-300 relative overflow-hidden
+                                    ${isLoading
+                                        ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed border border-white/5'
+                                        : 'bg-white text-black hover:scale-[1.01] hover:shadow-[0_0_20px_rgba(255,255,255,0.3)] border border-white/20'
+                                    }
+                                `}
                             >
                                 {isLoading ? (
-                                    <>
-                                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                                        Analyzing & Structuring...
-                                    </>
+                                    <div className="flex items-center justify-center gap-3">
+                                        <div className="h-4 w-4 bg-blue-500 rounded-full animate-ping" />
+                                        <span>ESTABLISHING NEURAL LINK...</span>
+                                    </div>
                                 ) : (
-                                    <>
-                                        <Wand2 className="mr-2 h-5 w-5" />
-                                        Generate Course Structure
-                                    </>
+                                    <div className="flex items-center justify-center gap-2">
+                                        <Zap className="h-5 w-5 fill-current" />
+                                        <span>INITIATE SEQUENCE</span>
+                                    </div>
                                 )}
                             </Button>
                         </CardContent>
@@ -141,10 +171,7 @@ State is how data changes over time..."
                             )}
 
                             {isLoading && (
-                                <div className="h-[400px] flex flex-col items-center justify-center text-primary gap-4 animate-pulse">
-                                    <Loader2 className="h-12 w-12 animate-spin" />
-                                    <p>AI is designing your curriculum...</p>
-                                </div>
+                                <GenerationCinema />
                             )}
 
                             {course && (
