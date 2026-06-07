@@ -23,10 +23,12 @@ import {
   Clock,
   ChevronLeft,
   ChevronRight,
+  Loader2,
 } from 'lucide-react';
 import { useState, useEffect, Suspense, useCallback, useRef } from 'react';
 import { ConfidenceSelector } from '@/components/ConfidenceSelector';
 import { AskAIModal } from '@/components/AskAIModal';
+import { StudyBuddy } from '@/components/StudyBuddy';
 import { RevisionRepository } from '@/data/repositories/revision.repo';
 import { processRevision } from '@/domain/revision/revision.engine';
 
@@ -89,6 +91,58 @@ function RevisionContent() {
   const [totalTime, setTotalTime] = useState(0);
   const { pieces, triggerConfetti } = useConfetti();
   const constraintsRef = useRef(null);
+
+  const [userAnswer, setUserAnswer] = useState("");
+  const [aiEvaluation, setAiEvaluation] = useState<{ score: number; feedback: string } | null>(null);
+  const [isEvaluating, setIsEvaluating] = useState(false);
+
+  const [tutorContext, setTutorContext] = useState<{
+    topic: string;
+    userAnswer: string;
+    feedback: string;
+    definition: string;
+  } | null>(null);
+  const [isTutorOpen, setIsTutorOpen] = useState(false);
+
+  const handleStartTutoring = (topic: string, uAns: string, feed: string, def: string) => {
+    setTutorContext({ topic, userAnswer: uAns, feedback: feed, definition: def });
+    setIsTutorOpen(true);
+  };
+
+  const handleEvaluateRecall = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!currentItem || !userAnswer.trim()) return;
+
+    setIsEvaluating(true);
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+      const res = await fetch('/api/ai/suggest', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          action: 'evaluate-recall',
+          definition: currentItem.content?.definition || '',
+          userAnswer: userAnswer,
+        }),
+      });
+      const result = await res.json();
+      if (result.success && result.evaluation) {
+        setAiEvaluation(result.evaluation);
+        setConfidence(result.evaluation.score);
+        setIsFlipped(true);
+      } else {
+        alert(result.error || "Failed to evaluate recall.");
+      }
+    } catch (err) {
+      console.error("Evaluation error:", err);
+      alert("An error occurred during recall evaluation.");
+    } finally {
+      setIsEvaluating(false);
+    }
+  };
 
   useEffect(() => {
     const fetchRevisionQueue = async () => {
@@ -174,6 +228,8 @@ function RevisionContent() {
       setCurrentIndex(prev => prev + 1);
       setIsFlipped(false);
       setConfidence(3);
+      setUserAnswer("");
+      setAiEvaluation(null);
     } else {
       setIsComplete(true);
       triggerConfetti();
@@ -193,6 +249,9 @@ function RevisionContent() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (isComplete || loading || revisionQueue.length === 0) return;
       if (showAIModal) return;
+
+      const activeTag = document.activeElement?.tagName;
+      if (activeTag === 'INPUT' || activeTag === 'TEXTAREA') return;
 
       switch (e.key) {
         case ' ':
@@ -405,20 +464,88 @@ function RevisionContent() {
                 onDragEnd={handleSwipe}
               >
                 {!isFlipped ? (
-                  <div className="w-full h-full flex flex-col items-center justify-center p-8 sm:p-12 bg-white rounded-3xl border-2 border-indigo-100 shadow-xl text-center dark:bg-zinc-900 dark:border-zinc-800 select-none">
-                    <span className="text-xs font-bold uppercase tracking-widest text-indigo-500 mb-4">{currentItem.technology}</span>
-                    <h2 className="text-2xl sm:text-4xl font-extrabold text-zinc-900 dark:text-zinc-50 mb-8">{currentItem.title}</h2>
-                    <div className="mt-auto flex items-center gap-2 text-zinc-400 font-medium text-sm">
-                      <RotateCcw className="h-4 w-4" />
-                      <span className="hidden sm:inline">Click or press <kbd className="px-1.5 py-0.5 bg-zinc-100 dark:bg-zinc-800 rounded text-xs">Space</kbd> to reveal</span>
-                      <span className="sm:hidden">Tap to reveal</span>
+                  <div className="w-full h-full flex flex-col items-center justify-center p-8 bg-white rounded-3xl border-2 border-indigo-100 shadow-xl text-center dark:bg-zinc-900 dark:border-zinc-800 select-none">
+                    <span className="text-xs font-bold uppercase tracking-widest text-indigo-500 mb-2">{currentItem.technology}</span>
+                    <h2 className="text-2xl sm:text-3xl font-extrabold text-zinc-900 dark:text-zinc-50 mb-4">{currentItem.title}</h2>
+                    
+                    <form onSubmit={handleEvaluateRecall} className="w-full flex flex-col gap-3 my-4" onClick={(e) => e.stopPropagation()}>
+                      <textarea
+                        value={userAnswer}
+                        onChange={(e) => setUserAnswer(e.target.value)}
+                        placeholder="Explain this concept in your own words..."
+                        className="w-full rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 p-4 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none min-h-[140px] resize-none"
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          type="submit"
+                          disabled={isEvaluating || !userAnswer.trim()}
+                          className="flex-1 flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl font-bold text-sm shadow-md disabled:opacity-50 transition-all min-h-[44px]"
+                        >
+                          {isEvaluating ? (
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              <span>Evaluating...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="h-4 w-4" />
+                              <span>Submit Recall</span>
+                            </>
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleFlip}
+                          className="px-4 py-3 border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-xl font-bold text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors min-h-[44px]"
+                        >
+                          Skip
+                        </button>
+                      </div>
+                    </form>
+
+                    <div className="mt-auto flex items-center gap-2 text-zinc-400 font-medium text-xs">
+                      <RotateCcw className="h-3.5 w-3.5" />
+                      <span>Type your recall attempt above, or click Skip</span>
                     </div>
-                    <SwipeHint />
                   </div>
                 ) : (
                   <div className="w-full h-full flex flex-col p-6 sm:p-8 bg-zinc-50 rounded-3xl border-2 border-indigo-600 shadow-2xl overflow-y-auto dark:bg-zinc-900 dark:border-indigo-500/50 select-none">
                     <div className="space-y-6">
-                      <section>
+                      {aiEvaluation && (
+                        <div className="p-4 rounded-2xl bg-gradient-to-r from-indigo-50/80 to-purple-50/80 dark:from-indigo-950/40 dark:to-purple-950/40 border border-indigo-200 dark:border-indigo-800/80 shadow-sm space-y-2 text-left">
+                          <div className="flex items-center justify-between">
+                            <span className="flex items-center gap-2 text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
+                              <Sparkles className="w-3.5 h-3.5 animate-pulse" />
+                              AI Recall Score
+                            </span>
+                            <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-100 dark:bg-indigo-900/50 px-2.5 py-0.5 rounded-full border border-indigo-200 dark:border-indigo-800/30">
+                              {aiEvaluation.score} / 5 Accuracy
+                            </span>
+                          </div>
+                          <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed font-medium">
+                            {aiEvaluation.feedback}
+                          </p>
+                          {aiEvaluation.score <= 3 && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleStartTutoring(
+                                  currentItem.title,
+                                  userAnswer,
+                                  aiEvaluation.feedback,
+                                  currentItem.content?.definition || ""
+                                );
+                              }}
+                              className="mt-3 w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-600/20 dark:hover:bg-indigo-600/30 text-white dark:text-indigo-400 rounded-xl border border-transparent dark:border-indigo-500/20 text-xs font-bold transition-all shadow-md active:scale-95"
+                            >
+                              <Sparkles className="w-3.5 h-3.5" />
+                              Tutor Me on This
+                            </button>
+                          )}
+                        </div>
+                      )}
+
+                      <section className="text-left">
                         <div className="flex items-center gap-2 text-indigo-600 font-bold mb-2">
                           <Lightbulb className="h-4 w-4" />
                           Definition
@@ -492,6 +619,12 @@ function RevisionContent() {
       <AnimatePresence>
         <KeyboardShortcutsHint show={showShortcuts} />
       </AnimatePresence>
+
+      <StudyBuddy
+        triggerOpen={isTutorOpen}
+        onClose={() => setIsTutorOpen(false)}
+        tutorContext={tutorContext}
+      />
     </div>
   );
 }

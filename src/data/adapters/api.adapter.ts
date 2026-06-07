@@ -2,18 +2,29 @@ const API_URL = typeof window !== 'undefined' ? '/api' : (process.env.NEXT_PUBLI
 
 export class ApiAdapter {
     private static async getHeaders() {
-        const headers: Record<string, string> = {
+        const headersMap: Record<string, string> = {
             'Content-Type': 'application/json',
         };
 
         if (typeof window !== 'undefined') {
             const token = localStorage.getItem('auth_token');
             if (token) {
-                headers['Authorization'] = `Bearer ${token}`;
+                headersMap['Authorization'] = `Bearer ${token}`;
+            }
+        } else {
+            try {
+                const { headers } = await import("next/headers");
+                const headersList = await headers();
+                const authHeader = headersList.get("authorization");
+                if (authHeader) {
+                    headersMap['Authorization'] = authHeader;
+                }
+            } catch (e) {
+                // Fallback / ignore when outside request context
             }
         }
 
-        return headers;
+        return headersMap;
     }
 
     private static async handleResponse(response: Response) {

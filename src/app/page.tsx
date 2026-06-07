@@ -11,7 +11,8 @@ import {
   GraduationCap,
   ArrowRight,
   LayoutDashboard,
-  Flame
+  Flame,
+  Mic
 } from 'lucide-react';
 import { useKnowledge } from '@/hooks/useKnowledge';
 import { LoadingState } from '@/components/LoadingState';
@@ -29,11 +30,12 @@ import { KnowledgeTree } from '@/components/dashboard/KnowledgeTree';
 
 import { ApiAdapter } from '@/data/adapters/api.adapter';
 import { QuizModal } from '@/components/quiz/QuizModal';
+import { VoiceIngestionModal } from '@/components/dashboard/VoiceIngestionModal';
 import { useAuth } from '@/context/AuthContext';
 
 export default function Dashboard() {
   const { user , logout } = useAuth();
-  const { knowledge, loading, error } = useKnowledge();
+  const { knowledge, loading, error, refresh } = useKnowledge();
   const [heatmapData, setHeatmapData] = useState([]);
   const [dailyProgress, setDailyProgress] = useState({ completed: 0, target: 10 });
   const [streak, setStreak] = useState(0);
@@ -57,6 +59,9 @@ export default function Dashboard() {
   // Quiz State
   const [isQuizOpen, setIsQuizOpen] = useState(false);
   const [quizTopics, setQuizTopics] = useState<string[]>([]);
+
+  // Voice Ingestion State
+  const [isVoiceIngestOpen, setIsVoiceIngestOpen] = useState(false);
 
   useEffect(() => {
     const fetchDashboardStats = async () => {
@@ -163,6 +168,11 @@ export default function Dashboard() {
   return (
     <main className="flex-1 container mx-auto px-4 py-8 min-h-screen bg-transparent transition-colors duration-300">
       <QuizModal isOpen={isQuizOpen} onClose={() => setIsQuizOpen(false)} topics={quizTopics} />
+      <VoiceIngestionModal
+        isOpen={isVoiceIngestOpen}
+        onClose={() => setIsVoiceIngestOpen(false)}
+        onSuccess={refresh}
+      />
 
       <div className="space-y-8 pb-12">
         {/* Header Section */}
@@ -177,6 +187,13 @@ export default function Dashboard() {
           </div>
           {/* ... existing header buttons ... */}
           <div className="flex gap-3">
+            <button
+              onClick={() => setIsVoiceIngestOpen(true)}
+              className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-5 py-2.5 text-sm font-semibold text-zinc-900 shadow-sm transition-all hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-50 dark:hover:bg-zinc-800 hover:scale-105 active:scale-95"
+            >
+              <Mic className="h-4 w-4 text-indigo-500" />
+              Quick Record
+            </button>
             <Link
               href="/knowledge/add"
               className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-500/30 transition-all hover:bg-indigo-700 hover:scale-105 active:scale-95"
@@ -193,6 +210,7 @@ export default function Dashboard() {
             </Link>
           </div>
         </div>
+
 
         <motion.div
           variants={container}

@@ -16,9 +16,9 @@ import { getAIKeys, AIKeyConfig } from './storage';
 import { OpenRouterProvider } from './providers/openrouter.provider';
 import { GeminiProvider } from './providers/gemini.provider';
 import { ApiAdapter } from '@/data/adapters/api.adapter';
-import { AIPromptConfig, AIResponse, AIProvider } from './ai-types';
+import { AIPromptConfig, AIResponse, AIProvider, AIFeatureType } from './ai-types';
 import { AIRouter } from './providers/ai-router.service';
-export type { AIPromptConfig, AIResponse, AIProvider }; // Re-export for compatibility
+export type { AIPromptConfig, AIResponse, AIProvider, AIFeatureType }; // Re-export for compatibility
 
 // Types imported from ./ai-types.ts
 
@@ -346,6 +346,73 @@ export const AIService = {
         success: false,
         content: '',
         error: error instanceof Error ? error.message : 'Failed to analyze gaps'
+      };
+    }
+  },
+  async suggestCardDetails(title: string): Promise<AIResponse> {
+    try {
+      const { buildSuggestCardSystemPrompt, buildSuggestCardPrompt } = await import('./prompts/suggestCard.prompt');
+      const config: AIPromptConfig = {
+        systemPrompt: buildSuggestCardSystemPrompt(),
+        userPrompt: buildSuggestCardPrompt(title),
+        format: 'json',
+      };
+      return await AIRouter.getInstance().generate('suggest_card', config);
+    } catch (error) {
+      return {
+        success: false,
+        content: '',
+        error: error instanceof Error ? error.message : 'Failed to suggest card details'
+      };
+    }
+  },
+  async simplifyDefinition(definition: string): Promise<AIResponse> {
+    try {
+      const { buildSimplifyDefinitionSystemPrompt, buildSimplifyDefinitionPrompt } = await import('./prompts/suggestCard.prompt');
+      const config: AIPromptConfig = {
+        systemPrompt: buildSimplifyDefinitionSystemPrompt(),
+        userPrompt: buildSimplifyDefinitionPrompt(definition),
+      };
+      return await AIRouter.getInstance().generate('simplify_definition', config);
+    } catch (error) {
+      return {
+        success: false,
+        content: '',
+        error: error instanceof Error ? error.message : 'Failed to simplify definition'
+      };
+    }
+  },
+  async evaluateRecall(definition: string, userAnswer: string): Promise<AIResponse> {
+    try {
+      const { buildEvaluateRecallSystemPrompt, buildEvaluateRecallPrompt } = await import('./prompts/suggestCard.prompt');
+      const config: AIPromptConfig = {
+        systemPrompt: buildEvaluateRecallSystemPrompt(),
+        userPrompt: buildEvaluateRecallPrompt(definition, userAnswer),
+        format: 'json',
+      };
+      return await AIRouter.getInstance().generate('evaluate_recall', config);
+    } catch (error) {
+      return {
+        success: false,
+        content: '',
+        error: error instanceof Error ? error.message : 'Failed to evaluate recall answer'
+      };
+    }
+  },
+  async suggestCardFromVoiceNote(note: string): Promise<AIResponse> {
+    try {
+      const { buildVoiceNoteSystemPrompt, buildVoiceNotePrompt } = await import('./prompts/suggestCard.prompt');
+      const config: AIPromptConfig = {
+        systemPrompt: buildVoiceNoteSystemPrompt(),
+        userPrompt: buildVoiceNotePrompt(note),
+        format: 'json',
+      };
+      return await AIRouter.getInstance().generate('suggest_card', config);
+    } catch (error) {
+      return {
+        success: false,
+        content: '',
+        error: error instanceof Error ? error.message : 'Failed to generate card from voice note'
       };
     }
   },

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Save, X, Plus, Trash2, Folder, ArrowLeft, Cloud, CloudOff, Check, Loader2 } from 'lucide-react';
+import { Save, X, Plus, Trash2, Folder, ArrowLeft, Cloud, CloudOff, Check, Loader2, Sparkles } from 'lucide-react';
 import { ConfidenceSelector } from './ConfidenceSelector';
 
 interface KnowledgeFormProps {
@@ -133,6 +133,92 @@ export function KnowledgeForm({ initialData, onSubmit, title }: KnowledgeFormPro
   const [selectedCollections, setSelectedCollections] = useState<string[]>(initialData?.collections || []);
   const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const [isMagicFilling, setIsMagicFilling] = useState(false);
+  const [isSimplifying, setIsSimplifying] = useState(false);
+
+  const handleMagicFill = async () => {
+    if (!formData.title.trim()) return;
+    setIsMagicFilling(true);
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+      const res = await fetch('/api/ai/suggest', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          action: 'suggest-card',
+          title: formData.title,
+        }),
+      });
+      const result = await res.json();
+      if (result.success && result.data) {
+        const d = result.data;
+        setFormData(prev => ({
+          ...prev,
+          domain: d.domain || prev.domain,
+          technology: d.technology || prev.technology,
+          difficulty: d.difficulty || prev.difficulty,
+          type: d.type || prev.type,
+          tags: d.tags && d.tags.length ? d.tags : prev.tags,
+          content: {
+            ...prev.content,
+            definition: d.content?.definition || prev.content.definition,
+            simpleExplanation: d.content?.simpleExplanation || prev.content.simpleExplanation,
+            example: d.content?.example || prev.content.example,
+            code: d.content?.code || prev.content.code,
+            commonMistakes: d.content?.commonMistakes && d.content.commonMistakes.length ? d.content.commonMistakes : prev.content.commonMistakes,
+            myConfusion: d.content?.myConfusion || prev.content.myConfusion,
+          }
+        }));
+      } else {
+        alert(result.error || "Failed to generate suggestions. Please check your AI keys / local server status.");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("An error occurred during Magic Fill generation.");
+    } finally {
+      setIsMagicFilling(false);
+    }
+  };
+
+  const handleSimplifyDefinition = async () => {
+    if (!formData.content.definition.trim()) return;
+    setIsSimplifying(true);
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+      const res = await fetch('/api/ai/suggest', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          action: 'simplify-definition',
+          definition: formData.content.definition,
+        }),
+      });
+      const result = await res.json();
+      if (result.success && result.simplified) {
+        setFormData(prev => ({
+          ...prev,
+          content: {
+            ...prev.content,
+            simpleExplanation: result.simplified,
+          }
+        }));
+      } else {
+        alert(result.error || "Failed to simplify definition.");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("An error occurred during simplification.");
+    } finally {
+      setIsSimplifying(false);
+    }
+  };
 
   const [formData, setFormData] = useState({
     title: initialData?.title || '',
@@ -340,14 +426,35 @@ export function KnowledgeForm({ initialData, onSubmit, title }: KnowledgeFormPro
                 <label className="block text-sm font-medium">Title</label>
                 <CharacterCounter current={formData.title.length} max={FIELD_LIMITS.title} />
               </div>
-              <input
-                required
-                type="text"
-                value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value.slice(0, FIELD_LIMITS.title) })}
-                className="w-full rounded-lg border p-3 text-sm focus:ring-2 focus:ring-indigo-500 dark:bg-zinc-800 dark:border-zinc-700 min-h-[44px]"
-                placeholder="e.g. React useEffect Hook"
-              />
+              <div className="flex gap-2">
+                <input
+                  required
+                  type="text"
+                  value={formData.title}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value.slice(0, FIELD_LIMITS.title) })}
+                  className="flex-1 rounded-lg border p-3 text-sm focus:ring-2 focus:ring-indigo-500 dark:bg-zinc-800 dark:border-zinc-700 min-h-[44px]"
+                  placeholder="e.g. React useEffect Hook"
+                />
+                <button
+                  type="button"
+                  onClick={handleMagicFill}
+                  disabled={isMagicFilling || !formData.title.trim()}
+                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-lg bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 transition-colors border border-zinc-200 dark:border-zinc-700 font-medium text-xs disabled:opacity-50 text-indigo-600 dark:text-indigo-400 min-h-[44px]"
+                  title="Auto-fill this entire form using AI"
+                >
+                  {isMagicFilling ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin text-indigo-500" />
+                      <span>Generating...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-4 w-4 text-indigo-500" />
+                      <span>Magic Fill</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -493,7 +600,28 @@ export function KnowledgeForm({ initialData, onSubmit, title }: KnowledgeFormPro
           </div>
           <div>
             <div className="flex items-center justify-between mb-1">
-              <label className="block text-sm font-medium">Simple Explanation (The "ELI5")</label>
+              <label className="block text-sm font-medium flex items-center gap-2">
+                Simple Explanation (The "ELI5")
+                <button
+                  type="button"
+                  onClick={handleSimplifyDefinition}
+                  disabled={isSimplifying || !formData.content.definition.trim()}
+                  className="flex items-center gap-1 text-[10px] text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 px-2 py-0.5 rounded transition-all disabled:opacity-40"
+                  title="Simplify definition into child-friendly terms using AI"
+                >
+                  {isSimplifying ? (
+                    <>
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      <span>Simplifying...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-3 w-3" />
+                      <span>Simplify Definition</span>
+                    </>
+                  )}
+                </button>
+              </label>
               <CharacterCounter current={formData.content.simpleExplanation.length} max={FIELD_LIMITS.simpleExplanation} />
             </div>
             <textarea

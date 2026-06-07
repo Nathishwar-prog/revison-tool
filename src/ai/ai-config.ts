@@ -59,4 +59,7 @@ export const FEATURE_MODEL_MAPPING: Record<string, AIModelCategory> = {
     // Potential future features
     'code_generation': AIModelCategory.CODING,
     'code_explanation': AIModelCategory.CODING,
+    'suggest_card': AIModelCategory.REASONING,
+    'simplify_definition': AIModelCategory.FAST,
+    'evaluate_recall': AIModelCategory.FAST,
 };

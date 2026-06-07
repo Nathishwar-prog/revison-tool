@@ -9,11 +9,54 @@ import { AlertCircle, GraduationCap, Telescope } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { VivaVoceModal } from './VivaVoceModal';
 import { toast } from 'sonner';
+import * as THREE from 'three';
 
 interface KnowledgeGardenProps {
     knowledge: Knowledge[];
     metrics?: LearningMetrics[]; // Optional map of ID -> Metrics
     onNodeSelect: (k: Knowledge) => void;
+}
+
+function GardenVines({ nodes, links }: { nodes: any[], links: any[] }) {
+    const ref = React.useRef<THREE.LineSegments>(null);
+
+    // Compute geometry positions dynamically
+    const positions = useMemo(() => {
+        const coords: number[] = [];
+        links.forEach(link => {
+            const source = nodes.find(n => n.id === link.source);
+            const target = nodes.find(n => n.id === link.target);
+            if (source && target) {
+                // Point A (slightly above ground)
+                coords.push(source.position[0], 0.05, source.position[2]);
+                // Point B (slightly above ground)
+                coords.push(target.position[0], 0.05, target.position[2]);
+            }
+        });
+        return new Float32Array(coords);
+    }, [nodes, links]);
+
+    const geometry = useMemo(() => {
+        const geo = new THREE.BufferGeometry();
+        if (positions.length > 0) {
+            geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        }
+        return geo;
+    }, [positions]);
+
+    if (positions.length === 0) return null;
+
+    return (
+        <lineSegments ref={ref} geometry={geometry}>
+            <lineBasicMaterial 
+                color="#34d399" 
+                transparent 
+                opacity={0.25} 
+                depthWrite={false}
+                blending={THREE.AdditiveBlending}
+            />
+        </lineSegments>
+    );
 }
 
 export function KnowledgeGarden({ knowledge, metrics, onNodeSelect }: KnowledgeGardenProps) {
@@ -75,6 +118,39 @@ export function KnowledgeGarden({ knowledge, metrics, onNodeSelect }: KnowledgeG
     }, [gaps]);
 
     const allNodes = [...gardenNodes, ...gapNodes];
+
+    const links = useMemo(() => {
+        const result: { source: string; target: string; strength: number }[] = [];
+        const activeNodes = gardenNodes; // Only connect actual garden plants
+        for (let i = 0; i < activeNodes.length; i++) {
+            for (let j = i + 1; j < activeNodes.length; j++) {
+                const a = activeNodes[i];
+                const b = activeNodes[j];
+                let strength = 0;
+                
+                // Link by Domain
+                if (a.domain && b.domain && a.domain === b.domain) strength += 0.2;
+                
+                // Link by Technology
+                if (a.technology && b.technology && a.technology === b.technology) strength += 0.3;
+                
+                // Link by Tags
+                const aTags = a.tags || [];
+                const bTags = b.tags || [];
+                const sharedTags = aTags.filter((t: string) => bTags.includes(t));
+                if (sharedTags.length > 0) strength += 0.4;
+
+                if (strength > 0) {
+                    result.push({
+                        source: a.id,
+                        target: b.id,
+                        strength: Math.min(strength, 1)
+                    });
+                }
+            }
+        }
+        return result;
+    }, [gardenNodes]);
 
     if (!knowledge || knowledge.length === 0) {
         return (
@@ -138,7 +214,7 @@ export function KnowledgeGarden({ knowledge, metrics, onNodeSelect }: KnowledgeG
 
                 <Stars radius={100} depth={50} count={2000} factor={4} saturation={0} fade speed={1} />
                 <Environment preset="night" />
-                <Cloud opacity={0.3} speed={0.4} width={10} depth={1.5} segments={20} position={[0, 10, -10]} />
+                <Cloud opacity={0.3} speed={0.4} segments={20} position={[0, 10, -10]} />
 
                 {/* Ground Plane */}
                 <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.1, 0]} receiveShadow>
@@ -169,6 +245,9 @@ export function KnowledgeGarden({ knowledge, metrics, onNodeSelect }: KnowledgeG
                         );
                     })}
                 </group>
+
+                {/* Connected Roots/Vines */}
+                <GardenVines nodes={allNodes} links={links} />
 
                 <OrbitControls
                     maxPolarAngle={Math.PI / 2 - 0.1} // Prevent going below ground
@@ -211,7 +290,7 @@ export function KnowledgeGarden({ knowledge, metrics, onNodeSelect }: KnowledgeG
                                     )}
                                 </div>
                                 <p className="mt-2 text-sm text-zinc-300 line-clamp-2 max-w-2xl">
-                                    {selectedNode.content.summary || selectedNode.content.definition}
+                                    {selectedNode.content.simpleExplanation || selectedNode.content.definition}
                                 </p>
                             </div>
                             <button onClick={() => setSelectedNode(null)} className="text-zinc-500 hover:text-white p-2">

@@ -22,9 +22,9 @@ export function PlantNode({ item, metrics, position, onClick, isGap }: PlantNode
         const forgetRate = metrics?.forgetRate || 0;
 
         if (isGap) return 'gap';
-        if (forgetRate > 0.4) return 'withered'; // High forget rate = dying
-        if (confidence <= 2) return 'sprout';    // Low confidence = baby
-        return 'blooming';                       // High confidence = strong
+        if (forgetRate > 0.4 || confidence <= 2) return 'withered'; // High forget rate or low confidence = wilted
+        if (confidence === 3) return 'sprout';    // Mid confidence = sprout
+        return 'blooming';                       // High confidence = strong green bloom
     }, [item.confidenceLevel, metrics?.forgetRate, isGap]);
 
     // Visual Traits based on state
@@ -32,11 +32,11 @@ export function PlantNode({ item, metrics, position, onClick, isGap }: PlantNode
         switch (state) {
             case 'withered':
                 return {
-                    color: '#78716c', // Stone grey/brown
-                    stemColor: '#57534e',
+                    color: '#ea580c', // Wilted Amber/Red
+                    stemColor: '#78350f', // Dry stem brown/amber
                     scale: 0.8,
-                    bobSpeed: 0.5,
-                    particleColor: '#a8a29e'
+                    bobSpeed: 0.3, // slow sway
+                    particleColor: '#ef4444'
                 };
             case 'gap':
                 return {
@@ -48,25 +48,37 @@ export function PlantNode({ item, metrics, position, onClick, isGap }: PlantNode
                 };
             case 'sprout':
                 return {
-                    color: '#4ade80', // Green
-                    stemColor: '#166534',
+                    color: '#a3e635', // Lime Green
+                    stemColor: '#3f6212',
                     scale: 0.6,
                     bobSpeed: 2,
-                    particleColor: '#86efac'
+                    particleColor: '#bef264'
                 };
             case 'blooming':
             default:
-                // Generate a unique flower color based on ID
-                const hue = parseInt(item.id.slice(-3), 36) % 360;
                 return {
-                    color: `hsl(${hue}, 70%, 60%)`,
-                    stemColor: '#15803d', // Strong green
+                    color: '#10b981', // Mastered Green
+                    stemColor: '#16a34a', // Vibrant Green stem
                     scale: 1.2,
                     bobSpeed: 1,
-                    particleColor: `hsl(${hue}, 80%, 80%)`
+                    particleColor: '#34d399'
                 };
         }
-    }, [state, item.id]);
+    }, [state]);
+
+    const stemRotation = useMemo<[number, number, number]>(() => {
+        if (state === 'withered') {
+            return [0.25, 0, 0.25]; // Drooping bend
+        }
+        return [0, 0, 0];
+    }, [state]);
+
+    const headPosition = useMemo<[number, number, number]>(() => {
+        if (state === 'withered') {
+            return [0.15, 0.35, 0.15]; // Shift head to match drooping stem
+        }
+        return [0, 0.5, 0];
+    }, [state]);
 
     useFrame((state) => {
         if (!groupRef.current) return;
@@ -83,6 +95,7 @@ export function PlantNode({ item, metrics, position, onClick, isGap }: PlantNode
     return (
         <group position={position} ref={groupRef}>
             <mesh
+                rotation={stemRotation}
                 onClick={(e) => { e.stopPropagation(); onClick(item); }}
                 onPointerOver={() => { setHovered(true); document.body.style.cursor = 'pointer'; }}
                 onPointerOut={() => { setHovered(false); document.body.style.cursor = 'auto'; }}
@@ -93,7 +106,7 @@ export function PlantNode({ item, metrics, position, onClick, isGap }: PlantNode
             </mesh>
 
             {/* Plant Head based on state */}
-            <group position={[0, 0.5, 0]}>
+            <group position={headPosition}>
                 {state === 'gap' && (
                     <mesh position={[0, 0, 0]}>
                         <octahedronGeometry args={[0.3, 0]} />

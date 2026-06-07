@@ -19,7 +19,18 @@ interface Message {
     content: string;
 }
 
-export const StudyBuddy = () => {
+interface StudyBuddyProps {
+    triggerOpen?: boolean;
+    onClose?: () => void;
+    tutorContext?: {
+        topic: string;
+        userAnswer: string;
+        feedback: string;
+        definition: string;
+    } | null;
+}
+
+export const StudyBuddy: React.FC<StudyBuddyProps> = ({ triggerOpen, onClose, tutorContext }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [isMinimized, setIsMinimized] = useState(false);
     const [input, setInput] = useState('');
@@ -27,6 +38,66 @@ export const StudyBuddy = () => {
     const [loading, setLoading] = useState(false);
     const [sessionId, setSessionId] = useState<string | null>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
+    const hasSeededRef = useRef<string | null>(null);
+
+    useEffect(() => {
+        if (triggerOpen) {
+            setIsOpen(true);
+            setIsMinimized(false);
+        } else if (triggerOpen === false) {
+            setIsOpen(false);
+        }
+    }, [triggerOpen]);
+
+    useEffect(() => {
+        if (isOpen && tutorContext) {
+            const contextKey = `${tutorContext.topic}-${tutorContext.userAnswer}`;
+            if (hasSeededRef.current === contextKey) return;
+            hasSeededRef.current = contextKey;
+
+            const seedTutor = async () => {
+                setLoading(true);
+                // Clear old messages and reset session
+                setMessages([]);
+                setSessionId(null);
+
+                const seedMsg = `[System Context] I struggled to recall '${tutorContext.topic}' correctly.\nTarget Definition: '${tutorContext.definition}'\nMy recall attempt: '${tutorContext.userAnswer}'\nAI Evaluation feedback: '${tutorContext.feedback}'.\nPlease act as a Socratic tutor. Summarize my mistake in 1 friendly sentence, and ask me a simple guiding question to help me figure out the concept step-by-step.`;
+
+                // Add to message queue locally
+                setMessages([{ role: 'user', content: seedMsg }]);
+
+                try {
+                    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+                    const res = await fetch('/api/ai/chat', {
+                        method: 'POST',
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                        },
+                        body: JSON.stringify({ message: seedMsg, sessionId: null })
+                    });
+                    const data = await res.json();
+                    
+                    if (data.success) {
+                        setSessionId(data.sessionId);
+                        setMessages([
+                            { role: 'user', content: seedMsg },
+                            { role: 'assistant', content: data.response }
+                        ]);
+                    } else {
+                        setMessages([{ role: 'assistant', content: "Sorry, I couldn't start the tutoring session." }]);
+                    }
+                } catch (err) {
+                    console.error("Tutoring seed failed:", err);
+                    setMessages([{ role: 'assistant', content: "Failed to connect to the study buddy." }]);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            seedTutor();
+        }
+    }, [isOpen, tutorContext]);
 
     useEffect(() => {
         if (scrollRef.current) {
@@ -97,7 +168,13 @@ export const StudyBuddy = () => {
                     <button onClick={() => setIsMinimized(!isMinimized)} className="p-1 hover:bg-white/10 rounded">
                         {isMinimized ? <Maximize2 className="w-4 h-4" /> : <Minimize2 className="w-4 h-4" />}
                     </button>
-                    <button onClick={() => setIsOpen(false)} className="p-1 hover:bg-white/10 rounded">
+                    <button 
+                        onClick={() => {
+                            setIsOpen(false);
+                            if (onClose) onClose();
+                        }} 
+                        className="p-1 hover:bg-white/10 rounded"
+                    >
                         <X className="w-4 h-4" />
                     </button>
                 </div>
@@ -110,7 +187,7 @@ export const StudyBuddy = () => {
                         ref={scrollRef}
                         className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-hide bg-zinc-50/50 dark:bg-zinc-950/50"
                     >
-                        {messages.length === 0 && (
+                        {messages.filter(msg => !msg.content.startsWith('[System Context]')).length === 0 && (
                             <div className="flex flex-col items-center justify-center h-full text-center space-y-4">
                                 <div className="w-16 h-16 rounded-2xl bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center text-indigo-600">
                                     <Bot className="w-8 h-8" />
@@ -124,7 +201,7 @@ export const StudyBuddy = () => {
                             </div>
                         )}
 
-                        {messages.map((msg, i) => (
+                        {messages.filter(msg => !msg.content.startsWith('[System Context]')).map((msg, i) => (
                             <div 
                                 key={i} 
                                 className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
